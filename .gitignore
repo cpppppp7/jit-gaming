@@ -4,6 +4,12 @@
 privateKey.txt
 privateKey*.txt
 
+# Contracts
+contracts/build/*
+contracts/.vscode/*
+contracts/out/*
+contracts/lib/*
+
 # Logs
 logs
 *.log

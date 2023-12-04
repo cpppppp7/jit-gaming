@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vault DApp</title>
+    <script src="./web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .balance {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .button {
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: blue;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .button:disabled {
+            background-color: grey;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <button class="button" id="depositButton">Deposit</button>
+            <button class="button" id="withdrawButton">Withdraw</button>
+            <button class="button" id="bindingButton">Binding</button>
+            <button class="button" id="sessionButton">Session</button>
+        </div>
+        <div>
+            <div class="balance" id="balance">Balance: 0 ETH</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
