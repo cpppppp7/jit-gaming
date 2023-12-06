@@ -192,7 +192,7 @@ async function f() {
 
     await walletContract.methods.approveAspects([aspect.options.address]).send({
         from: account.address,
-        gas: 40000000,
+        gas: 10000000,
         gasPrice: gasPrice,
         nonce: nonce++
     }).on('transactionHash', (txHash) => {
@@ -228,7 +228,7 @@ async function f() {
     signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
     receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-    console.log('register sys player result: sucess');
+    console.log('register sys player result: success');
     console.log(receipt)
 
     op = "0x1001";
@@ -265,7 +265,7 @@ async function f() {
     // send tx
     await contract.methods.move(2).send({
         from: account.address,
-        gas: 4000000,
+        gas: 20000000,
         gasPrice: gasPrice,
         nonce: nonce++
     }).on('transactionHash', (txHash) => {

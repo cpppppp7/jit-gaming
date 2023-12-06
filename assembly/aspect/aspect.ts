@@ -40,7 +40,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         if (method == "0x70e87aaf") {
             let currentCaller = ctx.currentCall.from;
             let sysPlayers = this.getSysPlayersList(ctx);
-            let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller));
+            let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller).toLowerCase());
 
             // if player moves, sys players also move just-in-time
             if (!isSysPlayer) {
@@ -50,7 +50,6 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
                 }
             } else {
                 // if sys player moves, do nothing in Aspect and pass the join point
-                sys.revert("hehe");
                 return;
             }
         }
@@ -203,7 +202,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         const array = new Array<string>();
         encodeSysPlayers = encodeSysPlayers.slice(4);
         for (let i = 0; i < count; ++i) {
-            array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1));
+            array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1)).toLowerCase();
         }
 
         return array;

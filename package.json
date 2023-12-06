@@ -5,7 +5,7 @@
     "fcontract:init": "forge init --vscode --no-commit contracts",
     "fcontract:install": "forge install",
     "fcontract:build": "forge build --names --sizes --build-info --root ./contracts",
-    "fcontract:build2": "solc -o ./contracts/build/contract/ --via-ir --abi --storage-layout --bin ./contracts/src/Counter.sol --overwrite",
+    "fcontract:build2": "solc -o ./contracts/build/contract/ --abi --storage-layout --bin ./contracts/src/Counter.sol --overwrite",
     "fcontract:deploy": "node scripts/contract-deploy.cjs --abi ./contracts/build/contract/Counter.abi --bytecode ./contracts/build/contract/Counter.bin",
     "Counter:getNumber:call": "cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"getNumber()\"",
     "Counter:increment": "node scripts/contract-send.cjs --method increment --abi ./contracts/build/contract/Counter.abi --contract $(grep CONTRACT .env | cut -d '=' -f2) --private-key $(grep ACCOUNT_1 .env | cut -d '=' -f2)",
