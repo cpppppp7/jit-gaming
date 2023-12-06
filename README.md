@@ -1,135 +1,27 @@
-
-
-# Sample Aspect
-
-## Instruction
-
-This is a sample project of Artela Aspect. 
-
-## Files
-
-```bash
-.
-├── README.md
-├── asconfig.json
-├── assembly
-│   ├── aspect                 <-- Your aspect code resides here
-│   │   └── aspect.ts          <-- Entry functions for the aspect
-│   └── index.ts
-├── contracts                  <-- Place your smart contracts here
-├── scripts                    <-- Utilitity scripts, including deploying, binding and etc.
-│   ├── aspect-deploy.cjs
-│   ├── bind.cjs
-│   ├── contract-call.cjs
-│   └── contract-deploy.cjs
-...
+#### step.1 build contract
+```shell
+npm run fcontract:build2
 ```
 
-## Commands
-
-
-### 1.Create a account
-
-```solidity
-  npm run account:create  -- --pkfile {file_path}
-```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-
-
-### 2. Build contract
-
-```solidity
-   npm run contract:build
-```
-> The compiled product is placed in the `build/contract` directory.
-
-
-### 3. Deploy contract
-
-```bash
-  npm run contract:deploy -- --pkfile {privateKey-path} \                        
-                           --abi ./build/contract/xxx.abi \                          
-                           --bytecode ./build/contract/xxx.bin \     
-                           --args [..] \                     
-                           --gas 200000 
-                           
-```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-> * --abi : contract abi path.
-> * --bytecode:  contract bytecode path.
-> * --args : If your contract's constructor requires input parameters, use `--args '[1, "a"]'` (optional).
-> * --gas : e.g., `200000` (optional,default value `7000000`) 
-
-
-### 4. Build Aspect
-
-```bash
-   npm run aspect:build
+#### step.2 build Aspect and run test
+```shell
+npm run aspect:build && node tests/test_tx.cjs
 ```
 
-> The compiled product is placed in the `build` directory.
+#### step.3 display game map
 
-
-### 5. Deploy Aspect
-
-```bash
-  npm run aspect:deploy -- --pkfile {privateKey-path} \                                                
-                         --wasm ./build/release.wasm \
-                         --gas 200000  
-```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-> * --wasm : wasm path.
-> * --gas : like `200000`,(optional,default value `7000000`).
-
-
-### 6. Contract Bind Aspect
-
-```bash
-  npm run contract:bind -- --pkfile {privateKey-path} \                          
-                         --contract {smart-contract-address} \
-                         --abi ./build/contract/xxx.abi \                        
-                         --aspectId {aspect-Id} \                          
-                         --gas 200000 
-```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-> * --abi : contract abi path.
-> * --contract:  smart contract address.
-> * --aspectId:  aspect id.
-> * --gas : like `200000`,(optional,default value `7000000`).
-
-
-### 7. Contract Call
+eit `.env`, modify actual `CONTRACT`
 
 ```shell
-  npm run contract:call -- --pkfile {privateKey-path}    \     
-                         --contract {smart-contract-address}  \                         
-                         --abi ./build/contract/xxx.abi   \                                    
-                         --method {method-name}  \   
-                         --args [..]
-                         --gas 200000 
+npm run Counter:display
 ```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-> * --abi : contract abi path.
-> * --contract:  smart contract address.
-> * --method:  method name.
-> * --args : If your contract's constructor requires input parameters, use `--args '[1, "a"]'` (optional).
-> * --gas : like `200000`,(optional,default value `7000000`).
+👆this command will real-time query contract and display game map.
 
-
-### 8. Send Transaction
-
+#### step.4 move player
 ```shell
-  npm run contract:send -- --pkfile {privateKey-path}    \     
-                         --contract {smart-contract-address}  \                         
-                         --abi ./build/contract/xxx.abi   \                                    
-                         --method {method-name}  \   
-                         --args [..]
-                         --gas 200000 
+npm run Counter:moveDown
 ```
-> * --pkfile : privateKey path for sender. (optional,default value `./privateKey.txt`).
-> * --abi : contract abi path.
-> * --contract:  smart contract address.
-> * --method:  method name.
-> * --args : If your contract's constructor requires input parameters, use `--args '[1, "a"]'` (optional).
-> * --gas : like `200000`,(optional,default value `7000000`).
 
+#### expect test result
+
+will display two red number on map, which means there are two player!

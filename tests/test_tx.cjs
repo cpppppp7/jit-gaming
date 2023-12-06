@@ -250,6 +250,7 @@ async function f() {
     // step 3. call contract
     // ******************************************
 
+    // call fisrt, if success then send tx
     calldata = contract.methods.move(2).encodeABI();
     tx = {
         from: account.address,
@@ -261,6 +262,7 @@ async function f() {
     ret = await web3.eth.call(tx);
     console.log("ret ", ret);
 
+    // send tx
     await contract.methods.move(2).send({
         from: account.address,
         gas: 4000000,
