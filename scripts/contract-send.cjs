@@ -82,6 +82,7 @@ async function send() {
         gas: !parseInt(argv.gas) | 4000000
     }
     let signedTx = await web3.eth.accounts.signTransaction(tx, sender.privateKey);
+    console.log('call contract tx: ' , tx);
     console.log('call contract tx hash: ' + signedTx.transactionHash);
 
     await web3.eth.sendSignedTransaction(signedTx.rawTransaction)

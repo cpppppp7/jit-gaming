@@ -31,6 +31,16 @@ contract Counter {
     mapping(address => uint256) public scores;
 
     uint256 public number;
+    
+    address private owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function isOwner(address user) external view returns (bool result) {
+        return user == owner;
+    }
 
     function setNumber(uint256 newNumber) public {
         number = newNumber;
