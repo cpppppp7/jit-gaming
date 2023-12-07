@@ -40,7 +40,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         if (method == "0x70e87aaf") {
             let currentCaller = ctx.currentCall.from;
             let sysPlayers = this.getSysPlayersList(ctx);
-            let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller));
+            let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller).toLowerCase());
 
             // if player moves, sys players also move just-in-time
             if (!isSysPlayer) {
@@ -50,7 +50,6 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
                 }
             } else {
                 // if sys player moves, do nothing in Aspect and pass the join point
-                sys.revert("hehe");
                 return;
             }
         }
@@ -64,6 +63,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         //
         //           ** 0x10xx means read only op **
         //           0x1001 | getSysPlayers
+        //           0x1002 | getAAWaletNonce
         //
         // * variable-length bytes: params
         //      encode rule of params is defined by each method
@@ -79,6 +79,10 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
             let ret = this.getSysPlayers(ctx);
             return sys.utils.stringToUint8Array(ret);
         }
+        if (op == "1002") {
+            let ret = this.getAAWalletNonce_(params, ctx);
+            return sys.utils.stringToUint8Array(ret);
+        }
         else {
             sys.revert("unknown op");
         }
@@ -89,10 +93,8 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
     // internal methods
     //****************************
     doMove(sysPlayer: string, ctx: PreContractCallCtx): void {
-        let sender = "0x" + sysPlayer;
-
         // init jit call
-        let nonce = sys.evm.stateDB(ctx).nonce(sender);
+        let nonce = this.getAAWalletNonce(sysPlayer, ctx);
 
         let direction = this.getRandomDirection(ctx);
 
@@ -102,15 +104,10 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
             ethereum.Bytes.fromHexString(sys.utils.uint8ArrayToHex(ctx.currentCall.data))
         ]);
 
-        // let calldata = ethereum.abiEncode('move(uint8)', [
-        //     ethereum.Uint.fromU8(direction)
-        // ])
-
-        // // Construct a JIT request (similar to the user operation defined in EIP-4337)
+        // Construct a JIT request (similar to the user operation defined in EIP-4337)
         let request = new JitInherentRequest(
-            sys.utils.hexToUint8Array(sender),        // The account initiating the operation
-            // sys.utils.hexToUint8Array(ethereum.Number.fromU64(nonce).encodeHex()),                // Anti-replay parameter
-            new Uint8Array(0),
+            sys.utils.hexToUint8Array(sysPlayer),        // The account initiating the operation
+            sys.utils.hexToUint8Array(ethereum.Number.fromU64(nonce).encodeHex()),
             new Uint8Array(0),             // The initCode of the account (necessary only if the account is not yet on-chain and needs to be created)
             sys.utils.hexToUint8Array(calldata), // The amount of gas to allocate to the main execution call
             sys.utils.hexToUint8Array(ethereum.Number.fromU64(8000000).encodeHex()),         // The amount of gas to allocate for the verification step
@@ -119,11 +116,20 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
             sys.utils.hexToUint8Array(ethereum.Number.fromU64(100).encodeHex()), // Maximum priority fee per gas (similar to EIP-1559 max_priority_fee_per_gas)
             new Uint8Array(0),     // Address of the paymaster sponsoring the transaction, followed by extra data to send to the paymaster (empty for self-sponsored transactions)
         );
+
         // Submit the JIT call
         let response = sys.evm.jitCall(ctx).submit(request);
 
         // Verify successful submission of the call
         sys.require(response.success, 'Failed to submit the JIT call: ' + sysPlayer);
+
+        // debug code
+        // sys.require(nonce == 0, 'real nonce: ' + nonce.toString()
+        //     + "- jit call ret :" + sys.utils.uint8ArrayToString(response.ret)
+        //     + "- jit call hash :" + sys.utils.uint8ArrayToHex(response.txHash)
+        // );
+
+        this.increaseAAWalletNonce(sysPlayer, nonce, ctx);
     }
 
     getRandomDirection(ctx: PreContractCallCtx): u8 {
@@ -137,6 +143,21 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
             return calldata.substring(0, 10);
         }
         return '0x' + calldata.substring(0, 8);
+    }
+
+    getAAWalletNonce(wallet: string, ctx: PreContractCallCtx): u64 {
+
+        let ret = sys.aspect.mutableState(ctx).get<string>(wallet);
+        if (ret.unwrap() == "") {
+            ret.set("0".toString());
+        }
+
+        return BigInt.fromString(ret.unwrap()).toUInt64();
+    }
+
+    increaseAAWalletNonce(wallet: string, nonce: u64, ctx: PreContractCallCtx): void {
+
+        sys.aspect.mutableState(ctx).get<string>(wallet).set((nonce + 1).toString());
     }
 
     parseOP(calldata: string): string {
@@ -193,6 +214,12 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         return sys.aspect.mutableState(ctx).get<string>(Aspect.SYS_PLAYER_STORAGE_KEY).unwrap();
     }
 
+    getAAWalletNonce_(params: string, ctx: OperationCtx): string {
+        sys.require(params.length == 40, "illegal params");
+        const wallet = params.slice(0, 40);
+        return sys.aspect.mutableState(ctx).get<string>(wallet.toLowerCase()).unwrap();
+    }
+
     getSysPlayersList(ctx: PreContractCallCtx): Array<string> {
         let sysPlayersKey = sys.aspect.mutableState(ctx).get<string>(Aspect.SYS_PLAYER_STORAGE_KEY);
         let encodeSysPlayers = sysPlayersKey.unwrap();
@@ -203,7 +230,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
         const array = new Array<string>();
         encodeSysPlayers = encodeSysPlayers.slice(4);
         for (let i = 0; i < count; ++i) {
-            array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1));
+            array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1)).toLowerCase();
         }
 
         return array;
@@ -213,9 +240,6 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
     //****************************
     // unused methods
     //****************************
-
-
-
 
     isOwner(sender: string): bool { return false; }
 

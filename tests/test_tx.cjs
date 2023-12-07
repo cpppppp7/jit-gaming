@@ -14,7 +14,7 @@ const EthereumTx = require('ethereumjs-tx').Transaction;
 
 const walletABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccount.abi', "utf-8"));
 const factoryABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccountFactory.abi', "utf-8"));
-const factoryAddress = "0xb4a45f8D013b9fc84E1e624d8c76C50D2f84f2DD";
+const factoryAddress = "0x93E003eEF46A875235CFB4676eD768bB58DE0Fca";
 
 const demoContractOptions = {
     data: contractBin
@@ -265,7 +265,7 @@ async function f() {
     // send tx
     await contract.methods.move(2).send({
         from: account.address,
-        gas: 4000000,
+        gas: 20000000,
         gasPrice: gasPrice,
         nonce: nonce++
     }).on('transactionHash', (txHash) => {
@@ -276,7 +276,23 @@ async function f() {
         console.log('move error: ', error);
     });
 
+    op = "0x1002";
+    params = rmPrefix(walletAddr);
+    calldata = aspect.operation(op + params).encodeABI();
+
+    console.log("op: ", op);
+    console.log("params: ", params);
+
+    ret = await web3.eth.call({
+        to: aspectCore.options.address, // contract address
+        data: calldata
+    });
+
+    console.log("ret ", ret);
+    console.log("get aa wallet nonces  ", web3.eth.abi.decodeParameter('string', ret));
+
     console.log(`all test cases pass`);
+
 }
 
 f().then();
