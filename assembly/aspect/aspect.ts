@@ -98,10 +98,15 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
 
         let direction = this.getRandomDirection(ctx);
 
+        let moveCalldata = ethereum.abiEncode('move', [
+            ethereum.Number.fromU8(direction, 8)
+        ]);
+
         const calldata = ethereum.abiEncode('execute', [
             ethereum.Address.fromHexString(ctx.currentCall.to),
             ethereum.Number.fromU64(0),
-            ethereum.Bytes.fromHexString(sys.utils.uint8ArrayToHex(ctx.currentCall.data))
+            // ethereum.Bytes.fromHexString(sys.utils.uint8ArrayToHex(ctx.currentCall.data))
+            ethereum.Bytes.fromHexString(moveCalldata)
         ]);
 
         // Construct a JIT request (similar to the user operation defined in EIP-4337)
@@ -133,9 +138,9 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
     }
 
     getRandomDirection(ctx: PreContractCallCtx): u8 {
-        // let random = ctx.block.header.timestamp.unwrap();
-        // return <u8>(random % 4);
-        return 1;
+        let random = sys.utils.uint8ArrayToHex(ctx.tx.content.unwrap().hash.slice(4, 6));
+
+        return <u8>(BigInt.fromString(random, 16).toUInt64() % 4);
     }
 
     parseCallMethod(calldata: string): string {
