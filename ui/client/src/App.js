@@ -14,6 +14,14 @@ function App() {
   const callcata_up = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000002";
   const callcata_right = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000003";
   const contractAddr = "0xda27f72137a12f2e747072e198e5530348bb1bfd"
+  const preSetPrivateKeys = [
+    // Test key. Don't expect to get any tokens here, idiot scanner, get out!
+    '0xfe67cb7a1998513a0d4fce822782f6aed46025d5179406736a8d17fe9bdb0929',
+    '0x35c242317a4536abc0b046feec2e4e6437776262d155a7b4dcc3bb015007bbc1',
+    '0xbcdd5be2a7ee3baaa2dd2d433d86e1dc8e6e0b25bcf8a8e7451921deef120075',
+    '0x4f7459264786f5d0ff123fca2aeeca42fd00d8079a097738981f7f7230eaa43c',
+    '0xed952bc312529a33ca67be2ee0f4c336a1582e7e4d42100c50dc6c018cf01abc'
+  ];
 
   // 假设这是异步获取到的编码数据
   const fetchEncodedBoardData = async () => {
@@ -71,7 +79,7 @@ function App() {
         return 0;
       } else {
         // 提取第四个字符并转换为整数
-        const playerNumber = parseInt(tile.player[3], 10);
+        const playerNumber = parseInt(tile.player[3], 16);
         return isNaN(playerNumber) ? 9 : playerNumber; // 如果转换失败则返回 0
       }
     });
@@ -173,7 +181,7 @@ function App() {
       return parseInt(address[3], 16); // 将地址的第4个字符（index 3）从十六进制转换为整数
     } catch (error) {
       console.error('Error getting player number:', error);
-      return ''; // 出错时返回空字符串
+      return '-'; // 出错时返回空字符串
     }
   };
 
@@ -197,15 +205,18 @@ function App() {
   };
 
   const getPlayerNum = (address) => {
-    return parseInt(address[3])
+    return parseInt(address[3], 16)
   };
 
 
   const [mapData, setMapData] = useState(createEmptyMap());
-  const [playerSK, setPlayerSK] = useState('');
   const [isMoving, setIsMoving] = useState(false);
   const [score, setScore] = useState(0);
   const [players, setPlayers] = useState([]);
+  const [playerSK, setPlayerSK] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * preSetPrivateKeys.length);
+    return preSetPrivateKeys[randomIndex];
+  });
 
 
   useEffect(() => {
@@ -299,37 +310,38 @@ function App() {
           <div className="control-panel">
             <button onClick={() => move('up')} disabled={isMoving}>{isMoving ? '⌛️' : 'W'}</button>
             <button onClick={() => move('left')} disabled={isMoving}>{isMoving ? '⌛️' : 'A'}</button>
-            <button onClick={() => move('right')} disabled={isMoving}>{isMoving ? '⌛️' : 'S'}</button>
-            <button onClick={() => move('down')} disabled={isMoving}>{isMoving ? '⌛️' : 'D'}</button>
+            <button onClick={() => move('right')} disabled={isMoving}>{isMoving ? '⌛️' : 'D'}</button>
+            <button onClick={() => move('down')} disabled={isMoving}>{isMoving ? '⌛️' : 'S'}</button>
+          </div>
+          <div className="player-sk-input">
+            <label htmlFor="player-sk">your random wallet private key:</label>
+            <input
+              type="text"
+              value={playerSK}
+              onChange={e => setPlayerSK(e.target.value)}
+              placeholder="enter your private key"
+            />
+          </div>
+          <div>
+            your player id: <span className="player-number-value">{getPlayerNumberFromAddress()}</span>
+          </div>
+          <div>
+            your score: <span className="player-number-value">{score}</span>
           </div>
         </div>
         <div className="players-panel">
-          <h3>玩家列表</h3>
+          <h3>Score List</h3>
           <ul>
             {players.map((player, index) => (
               <li key={index}>
-                编号：{getPlayerNum(player.player)}, 分数：{player.score}
+                Player {getPlayerNum(player.player)}: {player.score}
               </li>
             ))}
           </ul>
         </div>
       </div>
 
-      <div className="player-sk-input">
-        <label htmlFor="player-sk">请输入你的私钥:</label>
-        <input
-          type="text"
-          value={playerSK}
-          onChange={e => setPlayerSK(e.target.value)}
-          placeholder="enter your private key"
-        />
-      </div>
-      <div>
-        你的玩家编号：<span className="player-number-value">{getPlayerNumberFromAddress()}</span>
-      </div>
-      <div>
-        你的分数：<span className="player-number-value">{score}</span>
-      </div>
+
     </div>
   );
 }

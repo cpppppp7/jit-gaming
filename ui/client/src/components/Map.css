@@ -21,6 +21,17 @@
   background-position: center; /* 将背景图片置于中心 */
 }
 
+@media (max-width: 768px) {
+  .map {
+    grid-template-columns: repeat(10, 10vw); /* 在小屏幕上每个单元格占屏幕宽度的 10% */
+    grid-template-rows: repeat(10, 10vw); /* 在小屏幕上每个单元格占屏幕宽度的 10% */
+  }
+  .cell {
+    height: 10vw; /* 在小屏幕上单元格的高度也相应变化 */
+    width: 10vw; /* 在小屏幕上单元格的高度也相应变化 */
+  }
+}
+
 /* .player {
   width: 100%;
   height: 100%;
@@ -71,6 +82,7 @@
 
 .control-panel button {
   width: 100%;
+  height: 40px;
   padding: 10px;
   font-size: 16px;  /* 字体大小 */
   cursor: pointer;  /* 鼠标样式 */
@@ -85,7 +97,7 @@
 /* 私钥输入框样式 */
 .player-sk-input {
   margin: 10px auto;
-  width: 550px;   /* 总宽度（包括间隙） */
+  width: 95%;
 }
 
 .player-sk-input input {
@@ -109,14 +121,16 @@
   display: flex;
   justify-content: center;
   align-items: start;
-  padding: 20px;
+  padding: 2px;
 }
 
 .map-container {
-  /* 根据需要调整地图容器的样式 */
+  max-width: 550px; /* 假设每个单元格宽度为 50px，共 10 个单元格，加上间隙 */
+  height: auto; /* 高度自适应 */
 }
 
 .players-panel {
+  max-width: 550px; 
   width: 150px;  /* 或你希望的任何固定宽度 */
   margin-left: 10px;
   padding: 10px;
@@ -136,4 +150,16 @@
 
 .players-panel li {
   margin-bottom: 5px;
+}
+
+/* 响应式布局：在小屏幕上堆叠元素 */
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+  }
+
+  .map-container, .players-panel {
+    width: 100%;  /* 在小屏幕上占满整个容器宽度 */
+    margin-bottom: 20px; /* 添加一些间距 */
+  }
 }
