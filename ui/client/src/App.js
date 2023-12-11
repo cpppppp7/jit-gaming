@@ -193,7 +193,7 @@ function App() {
 
   const updatePlayersList = (boardData) => {
     const newPlayers = boardData.map(tile => {
-      if (tile.occupantId != '0') {
+      if (tile.occupantId !== '0') {
         // 假设 tile 结构包含玩家信息
         return {
           occupantId: tile.occupantId,
