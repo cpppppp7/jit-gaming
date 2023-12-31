@@ -14,7 +14,7 @@ const EthereumTx = require('ethereumjs-tx').Transaction;
 
 const walletABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccount.abi', "utf-8"));
 const factoryABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccountFactory.abi', "utf-8"));
-const factoryAddress = "0x93E003eEF46A875235CFB4676eD768bB58DE0Fca";
+const factoryAddress = "0x7b20970624Cd01582Cd01385B67B969446AC5110";
 
 const demoContractOptions = {
     data: contractBin
@@ -96,6 +96,7 @@ async function f() {
     let aspectDeployData = aspect.deploy({
         data: '0x' + aspectCode,
         properties: [],
+        joinPoints:["PreContractCall"],
         paymaster: account.address,
         proof: '0x0'
     }).encodeABI();
@@ -192,7 +193,7 @@ async function f() {
 
     await walletContract.methods.approveAspects([aspect.options.address]).send({
         from: account.address,
-        gas: 40000000,
+        gas: 20000000,
         gasPrice: gasPrice,
         nonce: nonce++
     }).on('transactionHash', (txHash) => {
@@ -256,6 +257,7 @@ async function f() {
         from: account.address,
         data: calldata,
         to: contract.options.address,
+        gas: 20000000,
     }
 
     console.log("call move : ", tx);

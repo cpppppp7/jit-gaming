@@ -12,7 +12,7 @@
     "Counter:getBoard:call": "cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"getBoard()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)",
     "Counter:getMyPosition:call": "cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"getMyPosition()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)",
     "Counter:moveUp": "node scripts/contract-send.cjs --method move --args '[2]' --abi ./contracts/build/contract/Counter.abi --contract $(grep CONTRACT .env | cut -d '=' -f2) --pkfile $(grep ACCOUNT_1 .env | cut -d '=' -f2)",
-    "Counter:moveUp:call": "cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"move(uint8)\" 2 --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)",
+    "Counter:moveUp:call": "cast call --rpc-url http://127.0.0.1:8545 $(grep CONTRACT .env | cut -d '=' -f2) \"move(uint8)\" 2 --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)",
     "Counter:moveDown": "node scripts/contract-send.cjs --method move --args '[0]' --abi ./contracts/build/contract/Counter.abi --contract $(grep CONTRACT .env | cut -d '=' -f2) --pkfile $(grep ACCOUNT_1 .env | cut -d '=' -f2)",
     "Counter:moveLeft": "node scripts/contract-send.cjs --method move --args '[1]' --abi ./contracts/build/contract/Counter.abi --contract $(grep CONTRACT .env | cut -d '=' -f2) --pkfile $(grep ACCOUNT_1 .env | cut -d '=' -f2)",
     "Counter:moveRight": "node scripts/contract-send.cjs --method move --args '[3]' --abi ./contracts/build/contract/Counter.abi --contract $(grep CONTRACT .env | cut -d '=' -f2) --pkfile $(grep ACCOUNT_1 .env | cut -d '=' -f2)",
@@ -39,16 +39,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@artela/aspect-libs": "^0.0.26",
-    "@artela/web3": "^1.9.18",
-    "@artela/web3-atl": "^1.9.18",
-    "@artela/web3-eth": "^1.9.18",
-    "@artela/web3-utils": "^1.9.8",
+    "@artela/aspect-libs": "0.0.30",
+    "@artela/web3": "1.9.22",
     "@assemblyscript/loader": "^0.27.5",
     "as-proto": "^1.3.0",
     "ethereumjs-tx": "^2.1.2"
   },
   "devDependencies": {
+    "bignumber.js": "^9.0.1",
     "@artela/aspect-tool": "^0.0.47",
     "as-proto-gen": "^1.3.0",
     "assemblyscript": "^0.27.5",
