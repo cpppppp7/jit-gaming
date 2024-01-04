@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Map from './components/Map';
 import './App.css';
 import Web3 from 'web3';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useSendTransaction, usePrepareSendTransaction, useWaitForTransaction } from 'wagmi'
 
 function App() {
 
@@ -14,14 +16,17 @@ function App() {
   const callcata_up = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000002";
   const callcata_right = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000003";
   const contractAddr = "0xda27f72137a12f2e747072e198e5530348bb1bfd"
-  const preSetPrivateKeys = [
-    // Test key. Don't expect to get any tokens here, idiot scanner, get out!
-    '0xfe67cb7a1998513a0d4fce822782f6aed46025d5179406736a8d17fe9bdb0929',
-    '0x35c242317a4536abc0b046feec2e4e6437776262d155a7b4dcc3bb015007bbc1',
-    '0xbcdd5be2a7ee3baaa2dd2d433d86e1dc8e6e0b25bcf8a8e7451921deef120075',
-    '0x4f7459264786f5d0ff123fca2aeeca42fd00d8079a097738981f7f7230eaa43c',
-    '0xed952bc312529a33ca67be2ee0f4c336a1582e7e4d42100c50dc6c018cf01abc'
-  ];
+
+  const [mapData, setMapData] = useState(createEmptyMap());
+  const [isMoving, setIsMoving] = useState(false);
+  const [score, setScore] = useState(0);
+  const [players, setPlayers] = useState([]);
+  const [playerSK, setPlayerSK] = useState("");
+
+  const [gameWallet, setGameWallet] = useState("");
+  const [hasGameWallet, setHasGameWallet] = useState(false);
+
+  const { address, isConnected } = useAccount()
 
   // 假设这是异步获取到的编码数据
   const fetchEncodedBoardData = async () => {
@@ -79,7 +84,7 @@ function App() {
         return 0;
       } else {
         // 提取第四个字符并转换为整数
-        const playerNumber = parseInt(tile.player[3], 16);
+        const playerNumber = getPlayerNum(tile.player);
         return isNaN(playerNumber) ? 9 : playerNumber; // 如果转换失败则返回 0
       }
     });
@@ -122,6 +127,7 @@ function App() {
   }
 
   const move = async (direction) => {
+
     if (!playerSK) {
       return; // 如果没有私钥，返回空字符串
     }
@@ -178,7 +184,7 @@ function App() {
 
     try {
       const address = web3.eth.accounts.privateKeyToAccount(playerSK).address;
-      return parseInt(address[3], 16); // 将地址的第4个字符（index 3）从十六进制转换为整数
+      return getPlayerNum(address);
     } catch (error) {
       console.error('Error getting player number:', error);
       return '-'; // 出错时返回空字符串
@@ -205,19 +211,8 @@ function App() {
   };
 
   const getPlayerNum = (address) => {
-    return parseInt(address[3], 16)
+    return parseInt(address.slice(3, 5), 16)
   };
-
-
-  const [mapData, setMapData] = useState(createEmptyMap());
-  const [isMoving, setIsMoving] = useState(false);
-  const [score, setScore] = useState(0);
-  const [players, setPlayers] = useState([]);
-  const [playerSK, setPlayerSK] = useState(() => {
-    const randomIndex = Math.floor(Math.random() * preSetPrivateKeys.length);
-    return preSetPrivateKeys[randomIndex];
-  });
-
 
   useEffect(() => {
 
@@ -243,7 +238,7 @@ function App() {
       }));
       setPlayers(updatedPlayers);
     };
-    fetchAllScore();  // 首次加载时调用一次
+    // fetchAllScore();  // 首次加载时调用一次
 
     const fetchScore = async () => {
       if (!playerSK) {
@@ -255,9 +250,9 @@ function App() {
     fetchScore();  // 首次加载时调用一次
 
     // 定时器逻辑
-    const intervalId = setInterval(updateMap, 200);
-    const intervalId2 = setInterval(fetchScore, 3000);  // 每 3 秒调用一次 fetchData
-    const intervalId3 = setInterval(fetchAllScore, 3000);  // 每 3 秒调用一次 fetchData
+    const intervalId = setInterval(updateMap, 1000);
+    // const intervalId2 = setInterval(fetchScore, 3000);  // 每 3 秒调用一次 fetchData
+    // const intervalId3 = setInterval(fetchAllScore, 3000);  // 每 3 秒调用一次 fetchData
 
     // 键盘事件监听逻辑
     const handleKeyDown = (event) => {
@@ -292,18 +287,133 @@ function App() {
     // 添加键盘事件监听
     window.addEventListener('keydown', handleKeyDown);
 
+    checkGameAccount();
+
     // 清理函数
     return () => {
       clearInterval(intervalId);  // 清除定时器
-      clearInterval(intervalId2);  // 清除定时器
-      clearInterval(intervalId3);  // 清除定时器
+      // clearInterval(intervalId2);  // 清除定时器
+      // clearInterval(intervalId3);  // 清除定时器
       window.removeEventListener('keydown', handleKeyDown);  // 移除键盘事件监听
     };
-  }, [isMoving]); // 依赖项列表中包括 isMoving
+  }, [isMoving, address, isConnected]); // 依赖项列表中包括 isMoving
+
+  const { config, error } = usePrepareSendTransaction({
+    to: gameWallet.trim(),
+    value: 10000000000000000n,
+    data: "0xCAFE240108"
+  })
+  const { data, isLoading, isSuccess, sendTransaction, sendTransactionAsync } = useSendTransaction(config);
+
+  function stringToHex(str) {
+    let hexStr = '';
+    for (let i = 0; i < str.length; i++) {
+      hexStr += str.charCodeAt(i).toString(16);
+    }
+    return "0x" + hexStr;
+  }
+
+  const checkGameAccount = async () => {
+
+    let sKeyPrivKey = loadGameAccount(address);
+    if (sKeyPrivKey === null) {
+      setHasGameWallet(false);
+      return;
+    }
+
+    let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
+    setGameWallet(sKeyAccount.address);
+    console.log("session key: ", sKeyAccount.address);
+
+    let gameAccountBalance = parseInt(await web3.eth.getBalance(sKeyAccount.address));
+
+    console.log("balance:" + gameAccountBalance);
+    if (gameAccountBalance < 10000000000000n) {
+      setHasGameWallet(false);
+      return;
+    }
+
+    setPlayerSK(sKeyPrivKey);
+    setHasGameWallet(true);
+  };
+
+  const activeGameAccount = async () => {
+
+    let sKeyPrivKey = loadGameAccount(address);
+    if (sKeyPrivKey === null) {
+      sKeyPrivKey = web3.eth.accounts.create(web3.utils.randomHex(32)).privateKey;
+      saveGameAccount(address, sKeyPrivKey);
+    }
+
+    let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
+    setGameWallet(sKeyAccount.address);
+    console.log("session key: ", sKeyAccount.address);
+
+    let gameAccountBalance = parseInt(await web3.eth.getBalance(sKeyAccount.address));
+
+    console.log("balance:" + gameAccountBalance);
+    if (gameAccountBalance < 10000000000000n) {
+      console.log("deposit...");
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (!sendTransactionAsync) {
+        throw "tx init fail."
+      }
+
+      let txHash = "";
+      try {
+        let ret = await sendTransactionAsync();
+        txHash = ret.hash;
+        console.log('Transaction hash:', txHash);
+      } catch (error) {
+        return;
+      }
+
+      let txReceipt = false;
+      let txReceiptStatus = false;
+      while (!txReceipt) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          let receipt = await web3.eth.getTransactionReceipt(txHash);
+          console.log("tx receipt:", receipt);
+          if (receipt != null) {
+            txReceipt = true;
+            txReceiptStatus = receipt.status;
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }
+
+      if (!txReceiptStatus) {
+        return;
+      }
+    }
+
+    setPlayerSK(sKeyPrivKey);
+    setHasGameWallet(true);
+  };
+
+  const saveGameAccount = (wallet, input) => {
+    console.log("saveGameAccount: " + wallet);
+    if (wallet == "" || wallet == null) {
+      return;
+    }
+
+    localStorage.setItem('jit_gaming_account' + wallet, input);
+  };
+
+  const loadGameAccount = (wallet) => {
+    console.log("loadGameAccount:", wallet, wallet == "");
+    if (wallet == "") {
+      return null;
+    }
+    const storedData = localStorage.getItem('jit_gaming_account' + wallet);
+    return storedData;
+  };
 
   return (
     <div className="App">
-
       <div className="content">
         <div className="map-container">
           <Map mapData={mapData} />
@@ -313,35 +423,25 @@ function App() {
             <button onClick={() => move('right')} disabled={isMoving}>{isMoving ? '⌛️' : 'D'}</button>
             <button onClick={() => move('down')} disabled={isMoving}>{isMoving ? '⌛️' : 'S'}</button>
           </div>
-          <div className="player-sk-input">
-            <label htmlFor="player-sk">your random wallet private key:</label>
-            <input
-              type="text"
-              value={playerSK}
-              onChange={e => setPlayerSK(e.target.value)}
-              placeholder="enter your private key"
-            />
+          <div className="wallet-panel">
+            <div className="wallet-sub-panel">
+              <ConnectButton />
+            </div>
+            <div className="wallet-sub-panel">
+              <button className="rounded-button" onClick={() => activeGameAccount()} disabled={hasGameWallet}>{hasGameWallet ? 'Game account: active' : 'Press to init game account'}</button>
+              <div className='line'>
+                your player id: <span className="player-number-value">{getPlayerNumberFromAddress()}</span>
+              </div>
+              <div className='line'>
+                history score: <span className="player-number-value">{score}</span>
+              </div>
+              {/* <div className='line'>
+                account: <span className="player-number-value">{address}</span>
+              </div> */}
+            </div>
           </div>
-          <div>
-            your player id: <span className="player-number-value">{getPlayerNumberFromAddress()}</span>
-          </div>
-          <div>
-            your score: <span className="player-number-value">{score}</span>
-          </div>
-        </div>
-        <div className="players-panel">
-          <h3>Score List</h3>
-          <ul>
-            {players.map((player, index) => (
-              <li key={index}>
-                Player {getPlayerNum(player.player)}: {player.score}
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
-
-
     </div>
   );
 }

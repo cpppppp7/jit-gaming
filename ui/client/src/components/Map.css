@@ -118,10 +118,13 @@
 }
 
 .content {
-  display: flex;
+  display: inline-flex;
   justify-content: center;
   align-items: start;
-  padding: 2px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 3px solid grey;
+  background-color: rgba(225,204,178, 0.652);
 }
 
 .map-container {
