@@ -120,11 +120,8 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
             return stringToUint8Array(ret);
         }
         if (op == "1002") {
-            let ret = this.getAAWalletNonce_(params);
+            let ret = this.getSysPlayerInRoom(BigInt.fromString(params, 16).toUInt64());
             return stringToUint8Array(ret);
-        }
-        if (op == "1003") {
-
         }
 
         sys.revert("unknown op");
@@ -233,10 +230,8 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
         return uint8ArrayToHex(sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY).unwrap());
     }
 
-    getAAWalletNonce_(params: string): string {
-        sys.require(params.length == 40, "illegal params");
-        const wallet = params.slice(0, 40);
-        return sys.aspect.mutableState.get<string>(wallet.toLowerCase()).unwrap();
+    getSysPlayerInRoom(roomId: u64): string {
+        return uint8ArrayToHex(sys.aspect.mutableState.get<Uint8Array>(`${Aspect.SYS_PLAYER_ROOM_KEY}:${roomId.toString()}`).unwrap());
     }
 
     getSysPlayersList(): Array<string> {
