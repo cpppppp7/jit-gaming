@@ -6,6 +6,7 @@ contract Royale {
     uint8 public constant MAP_HEIGHT = 10;
     uint8 public constant TILE_COUNT = MAP_WIDTH * MAP_HEIGHT;
     uint8 public constant PLAYER_COUNT = 10;
+    uint96 public constant MAX_ROOM_NUMBER = 10;
 
     enum Dir {
         DOWN,
@@ -30,9 +31,6 @@ contract Royale {
 
     event Scored(address player, uint256 score);
 
-    // Total rooms we have
-    uint96 public _roomCount = 0;
-
     // Quick lookup for player position in a room
     // key: first 96 bit for room id, next 8 bit for player id
     // value: player position tile number
@@ -51,7 +49,7 @@ contract Royale {
     // Quick lookup for the players in a room
     // key: room id
     // value: array of player addresses
-    mapping(uint96 => Room) public rooms;
+    Room[MAX_ROOM_NUMBER] public rooms;
 
     // Quick lookup for the player's address in a room
     // key: [96 Bit Room ID][8 Bit Player RoomId][24 Bit Empty]
@@ -74,49 +72,55 @@ contract Royale {
         return user == owner;
     }
 
-    function join() private {
-        if (playerRoomId[msg.sender] > 0) {
-            // already joined
-            return;
-        }
+    function join() public {
+        require(playerRoomId[msg.sender] == 0, "already joined another room");
 
         // copy the storage to stack
-        uint96 roomCount = _roomCount;
+        uint96 availableRoom = _getAvailableRoom();
+        require(availableRoom > 0, "all rooms are full");
+
+        // join the available room
+        _join(availableRoom);
+    }
+
+
+    function _getAvailableRoom() private view returns (uint96) {
         uint96 availableRoom;
-        bool foundRoom = false;
-        for (uint96 i = 0; i < roomCount; ++i) {
+        for (uint96 i = 0; i < MAX_ROOM_NUMBER; ++i) {
             // find a room with empty slot
             if (rooms[i].playerCount < PLAYER_COUNT) {
-                availableRoom = i;
-                foundRoom = true;
+                availableRoom = i + 1;
                 break;
             }
         }
-        if (!foundRoom) {
-            // create a new room, room number starts from 1
-            availableRoom = roomCount + 1;
-            _roomCount = availableRoom;
-        }
+        return availableRoom;
+    }
+
+    function _join(uint96 roomId) private {
+        // find an empty slot in the room
+        Room storage room = rooms[roomId - 1];
+        address[PLAYER_COUNT] memory playersInRoom = room.players;
+        uint8 playerIdInRoom = 0;
+
+        require(room.playerCount < PLAYER_COUNT, "room is full");
 
         // find an empty slot in the room
-        address[PLAYER_COUNT] memory playersInRoom = rooms[availableRoom].players;
-        uint8 playerIdInRoom = 0;
         for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
             if (playersInRoom[i] == address(0)) {
-                rooms[availableRoom].players[i] = msg.sender;
+                room.players[i] = msg.sender;
                 playerIdInRoom = i + 1;
-                ++rooms[availableRoom].playerCount;
+                ++room.playerCount;
                 break;
             }
         }
 
         // join the room
-        playerRoomId[msg.sender] = availableRoom;
-        playerRoomIdIndex[buildPlayerAddressIndex(availableRoom, msg.sender)] = playerIdInRoom;
-        playerRoomIdReverseIndex[buildPlayerRoomIdIndex(availableRoom, playerIdInRoom)] = msg.sender;
+        playerRoomId[msg.sender] = roomId;
+        playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)] = playerIdInRoom;
+        playerRoomIdReverseIndex[buildPlayerRoomIdIndex(roomId, playerIdInRoom)] = msg.sender;
 
         // This move will just assign a random position to the player, but not move it
-        _move(availableRoom, playerIdInRoom, Dir.UP);
+        _move(roomId, playerIdInRoom, Dir.UP);
     }
 
     function buildPlayerRoomIdIndex(uint96 roomId, uint8 playerIdInRoom) private pure returns (uint128) {
@@ -134,7 +138,8 @@ contract Royale {
     function _move(uint96 roomId, uint8 playerIdInRoom, Dir dir) private {
         uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, playerIdInRoom);
         uint8 currentPosition = playerPositions[playerRoomIdIndexKey];
-        uint8[TILE_COUNT] storage board = rooms[roomId].board;
+        Room storage room = rooms[roomId - 1];
+        uint8[TILE_COUNT] storage board = room.board;
         if (currentPosition == 0) {
             // Assign a random position if the player doesn't exist on the board
             uint256 salt = 0;
@@ -159,8 +164,8 @@ contract Royale {
                 // remove the previous occupant out of the board and room
                 uint128 tileOccupantRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, tileOccupant);
                 delete playerPositions[tileOccupantRoomIdIndexKey];
-                delete rooms[roomId].players[tileOccupant - 1];
-                --rooms[roomId].playerCount;
+                delete room.players[tileOccupant - 1];
+                --room.playerCount;
                 address tileOccupantAddress = playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
                 delete playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
                 delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, tileOccupantAddress)];
@@ -170,21 +175,29 @@ contract Royale {
             }
 
             // set the player to the new position
-            board[currentPosition] = playerIdInRoom;
+            board[newPosition] = playerIdInRoom;
             playerPositions[playerRoomIdIndexKey] = newPosition;
         }
     }
 
-    function move(Dir dir) public {
-        uint96 roomId = playerRoomId[msg.sender];
-        if (roomId == 0) {
-            // join the game if the player hasn't joined
-            join();
-        } else {
-            // if the player has joined, move the player
-            uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)];
-            _move(roomId, playerIdInRoom, dir);
+    function move(uint96 roomId, Dir dir) public {
+        require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
+
+        uint96 joinedRoom = playerRoomId[msg.sender];
+        require(joinedRoom == 0 || roomId == joinedRoom, "not joined any room");
+        if (joinedRoom == 0) {
+            // join the given room if not joined
+            // note this might fail if the room is full
+            _join(roomId);
         }
+
+        // move the player
+        uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)];
+        _move(roomId, playerIdInRoom, dir);
+    }
+
+    function getAvailableRoom() public view returns (uint96) {
+        return _getAvailableRoom();
     }
 
     function getBoard(uint96 roomId) public view returns (uint8[TILE_COUNT] memory) {
@@ -220,6 +233,10 @@ contract Royale {
             return (currentPosition % MAP_WIDTH) == (MAP_WIDTH - 1) ? currentPosition : currentPosition + 1;
         }
         return currentPosition;
+    }
+
+    function getPlayerRoomId(address player) public view returns (uint96) {
+        return playerRoomId[player];
     }
 
     function getPlayerByPosition(

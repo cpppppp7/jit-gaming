@@ -12,8 +12,8 @@
   },
   "files": {
     "src/Royale.sol": {
-      "lastModificationDate": 1704359756433,
-      "contentHash": "3657805ec9b0f1036ddafd92f5b70001",
+      "lastModificationDate": 1704365334253,
+      "contentHash": "30913bcb4930fd89d1be5f62bc7a857f",
       "sourceName": "src/Royale.sol",
       "solcConfig": {
         "settings": {
