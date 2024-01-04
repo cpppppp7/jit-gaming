@@ -196,8 +196,8 @@ contract Royale {
         _move(roomId, playerIdInRoom, dir);
     }
 
-    function getAvailableRoom() public view returns (uint64) {
-        return _getAvailableRoom();
+    function getJoinedRoom() public view returns (uint64) {
+        return playerRoomId[msg.sender];
     }
 
     function getBoard(uint64 roomId) public view returns (uint8[TILE_COUNT] memory) {
