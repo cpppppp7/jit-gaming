@@ -4,10 +4,10 @@ import {
     ethereum,
     hexToUint8Array,
     IAspectOperation,
-    IPreContractCallJP,
+    IPostContractCallJP,
     JitCallBuilder,
     OperationInput,
-    PreContractCallInput,
+    PostContractCallInput,
     stringToUint8Array,
     sys,
     uint8ArrayToHex,
@@ -24,11 +24,15 @@ import { Protobuf } from "as-proto/assembly/Protobuf";
  * You can implement corresponding interfaces: IAspectTransaction, IAspectBlock,IAspectOperation or both to tell Artela which
  * type of Aspect you are implementing.
  */
-export class Aspect implements IPreContractCallJP, IAspectOperation {
+export class Aspect implements IPostContractCallJP, IAspectOperation {
 
     static readonly SYS_PLAYER_STORAGE_KEY: string = 'SYS_PLAYER_STORAGE_KEY';
 
-    preContractCall(input: PreContractCallInput): void {
+    static readonly UNASSIGNED_SYS_PLAYER_STORAGE_KEY: string = 'UNASSIGNED_SYS_PLAYER_STORAGE_KEY';
+
+    static readonly SYS_PLAYER_ROOM_KEY: string = 'SYS_PLAYER_ROOM_KEY';
+
+    postContractCall(input: PostContractCallInput): void {
 
         let calldata = uint8ArrayToHex(input.call!.data);
         let method = this.parseCallMethod(calldata);
@@ -41,15 +45,54 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
 
             // if player moves, sys players also move just-in-time
             if (!isSysPlayer) {
-                // do jit-call
-                for (let i = 0; i < sysPlayers.length; ++i) {
-                    this.doMove(sysPlayers[i], input);
+                const roomId = this.extractRoomId(input.call!.data);
+                const sysPlayer = this.getSysPlayerAccount(roomId)
+                if (sysPlayer == "") {
+                    // no free sys player, do nothing
+                    return;
                 }
+
+                // do jit-call
+                this.doMove(sysPlayer, roomId, input);
             } else {
                 // if sys player moves, do nothing in Aspect and pass the join point
                 return;
             }
         }
+    }
+
+    extractRoomId(callData: Uint8Array): u64 {
+        let roomId = callData.subarray(4, 36);
+        return BigInt.fromUint8Array(roomId).toUInt64();
+    }
+
+    getSysPlayerAccount(roomId: u64): string {
+        const storageRef = sys.aspect.mutableState.get<Uint8Array>(`${Aspect.SYS_PLAYER_ROOM_KEY}:${roomId.toString()}`);
+        let sysPlayerInRoom = uint8ArrayToHex(storageRef.unwrap());
+        if (!sysPlayerInRoom.length) {
+            // no one in the room, got assign one of the unassigned sys players to the room
+            const unassignedSysPlayers = sys.aspect.mutableState.get<Uint8Array>(Aspect.UNASSIGNED_SYS_PLAYER_STORAGE_KEY);
+            const encodedUnassignedSysPlayers = uint8ArrayToHex(unassignedSysPlayers.unwrap());
+            if (encodedUnassignedSysPlayers.length < 44) {
+                // no free sys player
+                sys.log("no free sys player");
+                return ""
+            }
+
+            const count = encodedUnassignedSysPlayers.slice(0, 4);
+            const encodedDataLen = encodedUnassignedSysPlayers.length;
+            sysPlayerInRoom = encodedUnassignedSysPlayers.slice(encodedDataLen - 40, encodedDataLen);
+
+            // update the unassigned players
+            const newCount = BigInt.fromString(count, 16).toInt32() - 1;
+            const newEncodedUnassignedSysPlayers = this.rmPrefix(newCount.toString(16)).padStart(4, '0') + encodedUnassignedSysPlayers.slice(4, encodedDataLen - 40);
+            unassignedSysPlayers.set(hexToUint8Array(newEncodedUnassignedSysPlayers));
+
+            // update the sys player in room
+            storageRef.set(hexToUint8Array(sysPlayerInRoom));
+        }
+
+        return sysPlayerInRoom;
     }
 
     operation(input: OperationInput): Uint8Array {
@@ -79,25 +122,30 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         if (op == "1002") {
             let ret = this.getAAWalletNonce_(params);
             return stringToUint8Array(ret);
-        } else {
-            sys.revert("unknown op");
         }
+        if (op == "1003") {
+
+        }
+
+        sys.revert("unknown op");
         return new Uint8Array(0);
     }
 
     //****************************
     // internal methods
     //****************************
-    doMove(sysPlayer: string, input: PreContractCallInput): void {
+    doMove(sysPlayer: string, roomId: u64, input: PostContractCallInput): void {
         // init jit call
         let direction = this.getRandomDirection(input);
 
         let moveCalldata = ethereum.abiEncode('move', [
+            ethereum.Number.fromU64(roomId),
             ethereum.Number.fromU8(direction, 8)
         ]);
 
         // Construct a JIT request (similar to the user operation defined in EIP-4337)
-        let request = JitCallBuilder.simple(hexToUint8Array(sysPlayer),
+        let request = JitCallBuilder.simple(
+            hexToUint8Array(sysPlayer),
             input.call!.to,
             hexToUint8Array(moveCalldata)
         ).build();
@@ -105,24 +153,17 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         // Submit the JIT call
         let response = sys.hostApi.evmCall.jitCall(request);
 
-        // Verify successful submission of the call
-        sys.require(response.success, `Failed to submit the JIT call: ${sysPlayer}, err: ${response.errorMsg}, ret: ${uint8ArrayToString(response.ret)}`);
-
-        // debug code
-        // sys.require(nonce == 0, 'real nonce: ' + nonce.toString()
-        //     + "- jit call ret :" + sys.utils.uint8ArrayToString(response.ret)
-        //     + "- jit call hash :" + sys.utils.uint8ArrayToHex(response.txHash)
-        // );
-
-        // this.increaseAAWalletNonce(sysPlayer, nonce, ctx);
+        // Verify successful submission of the call,
+        // call may fail if room is full
+        if (!response.success) {
+            sys.log(`Failed to submit the JIT call: ${sysPlayer}, err: ${response.errorMsg}, ret: ${uint8ArrayToString(response.ret)}`);
+        }
     }
 
-    getRandomDirection(input: PreContractCallInput): u8 {
+    getRandomDirection(input: PostContractCallInput): u8 {
         const rawHash = sys.hostApi.runtimeContext.get('tx.hash');
         var hash = Protobuf.decode<BytesData>(rawHash, BytesData.decode).data;
-
         let random = uint8ArrayToHex(hash.slice(4, 6));
-
         return <u8>(BigInt.fromString(random, 16).toUInt64() % 4);
     }
 
@@ -131,21 +172,6 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
             return calldata.substring(0, 10);
         }
         return '0x' + calldata.substring(0, 8);
-    }
-
-    getAAWalletNonce(wallet: string): u64 {
-
-        let ret = sys.aspect.mutableState.get<string>(wallet);
-        if (ret.unwrap() == "") {
-            ret.set("0".toString());
-        }
-
-        return BigInt.fromString(ret.unwrap()).toUInt64();
-    }
-
-    increaseAAWalletNonce(wallet: string, nonce: u64): void {
-
-        sys.aspect.mutableState.get<string>(wallet).set((nonce + 1).toString());
     }
 
     parseOP(calldata: string): string {
@@ -173,6 +199,11 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
     }
 
     registerSysPlayer(params: string): void {
+        this.saveSysPlayer(params, Aspect.SYS_PLAYER_STORAGE_KEY);
+        this.saveSysPlayer(params, Aspect.UNASSIGNED_SYS_PLAYER_STORAGE_KEY);
+    }
+
+    private saveSysPlayer(params: string, storagePrefix: string): void {
         // params encode rules:
         //     20 bytes: player address
         //         eg. e2f8857467b61f2e4b1a614a0d560cd75c0c076f
@@ -180,7 +211,7 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         sys.require(params.length == 40, "illegal params");
         const player = params.slice(0, 40);
 
-        let sysPlayersKey = sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY);
+        let sysPlayersKey = sys.aspect.mutableState.get<Uint8Array>(storagePrefix);
         let encodeSysPlayers = uint8ArrayToHex(sysPlayersKey.unwrap());
         if (encodeSysPlayers == "") {
             let count = "0001";
@@ -190,7 +221,7 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
             let count = BigInt.fromString(encodeCount, 16).toInt32();
 
             count++;
-            encodeCount = this.rmPrefix(count.toString(16));
+            encodeCount = this.rmPrefix(count.toString(16)).padStart(4, '0');
 
             encodeSysPlayers = encodeCount + encodeSysPlayers.slice(4, encodeSysPlayers.length) + player;
         }
