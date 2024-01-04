@@ -6,7 +6,7 @@ contract Royale {
     uint8 public constant MAP_HEIGHT = 10;
     uint8 public constant TILE_COUNT = MAP_WIDTH * MAP_HEIGHT;
     uint8 public constant PLAYER_COUNT = 10;
-    uint96 public constant MAX_ROOM_NUMBER = 10;
+    uint64 public constant MAX_ROOM_NUMBER = 10;
 
     enum Dir {
         DOWN,
@@ -32,7 +32,7 @@ contract Royale {
     event Scored(address player, uint256 score);
 
     // Quick lookup for player position in a room
-    // key: first 96 bit for room id, next 8 bit for player id
+    // key: first 64 bit for room id, next 8 bit for player id
     // value: player position tile number
     mapping(uint128 => uint8) public playerPositions;
 
@@ -44,7 +44,7 @@ contract Royale {
     // Quick lookup for the room that a player has joined
     // key: player address
     // value: room id
-    mapping(address => uint96) public playerRoomId;
+    mapping(address => uint64) public playerRoomId;
 
     // Quick lookup for the players in a room
     // key: room id
@@ -52,12 +52,12 @@ contract Royale {
     Room[MAX_ROOM_NUMBER] public rooms;
 
     // Quick lookup for the player's address in a room
-    // key: [96 Bit Room ID][8 Bit Player RoomId][24 Bit Empty]
+    // key: [64 Bit Room ID][8 Bit Player RoomId][24 Bit Empty]
     // value: player's actual address
     mapping(uint128 => address) public playerRoomIdReverseIndex;
 
     // Quick lookup for the player's room id in a room
-    // key: [96 Bit Room ID][160 Bit Player Address]
+    // key: [64 Bit Room ID][160 Bit Player Address]
     // value: player's id in the room
     mapping(uint256 => uint8) public playerRoomIdIndex;
 
@@ -76,7 +76,7 @@ contract Royale {
         require(playerRoomId[msg.sender] == 0, "already joined another room");
 
         // copy the storage to stack
-        uint96 availableRoom = _getAvailableRoom();
+        uint64 availableRoom = _getAvailableRoom();
         require(availableRoom > 0, "all rooms are full");
 
         // join the available room
@@ -84,9 +84,9 @@ contract Royale {
     }
 
 
-    function _getAvailableRoom() private view returns (uint96) {
-        uint96 availableRoom;
-        for (uint96 i = 0; i < MAX_ROOM_NUMBER; ++i) {
+    function _getAvailableRoom() private view returns (uint64) {
+        uint64 availableRoom;
+        for (uint64 i = 0; i < MAX_ROOM_NUMBER; ++i) {
             // find a room with empty slot
             if (rooms[i].playerCount < PLAYER_COUNT) {
                 availableRoom = i + 1;
@@ -96,7 +96,7 @@ contract Royale {
         return availableRoom;
     }
 
-    function _join(uint96 roomId) private {
+    function _join(uint64 roomId) private {
         // find an empty slot in the room
         Room storage room = rooms[roomId - 1];
         address[PLAYER_COUNT] memory playersInRoom = room.players;
@@ -123,19 +123,19 @@ contract Royale {
         _move(roomId, playerIdInRoom, Dir.UP);
     }
 
-    function buildPlayerRoomIdIndex(uint96 roomId, uint8 playerIdInRoom) private pure returns (uint128) {
-        return (uint128(roomId) << 32) | (uint128(playerIdInRoom) << 24);
+    function buildPlayerRoomIdIndex(uint64 roomId, uint8 playerIdInRoom) private pure returns (uint128) {
+        return (uint128(roomId) << 64) | (uint128(playerIdInRoom) << 24);
     }
 
-    function buildPlayerAddressIndex(uint96 roomId, address playerAddress) private pure returns (uint256) {
-        return (uint256(roomId) << 160) | (uint256(uint160(playerAddress)));
+    function buildPlayerAddressIndex(uint64 roomId, address playerAddress) private pure returns (uint256) {
+        return (uint256(roomId) << 192) | (uint256(uint160(playerAddress)));
     }
 
     function generateRandomPosition(uint256 salt) private view returns (uint8) {
         return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, salt))) % TILE_COUNT);
     }
 
-    function _move(uint96 roomId, uint8 playerIdInRoom, Dir dir) private {
+    function _move(uint64 roomId, uint8 playerIdInRoom, Dir dir) private {
         uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, playerIdInRoom);
         uint8 currentPosition = playerPositions[playerRoomIdIndexKey];
         Room storage room = rooms[roomId - 1];
@@ -180,10 +180,10 @@ contract Royale {
         }
     }
 
-    function move(uint96 roomId, Dir dir) public {
+    function move(uint64 roomId, Dir dir) public {
         require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
 
-        uint96 joinedRoom = playerRoomId[msg.sender];
+        uint64 joinedRoom = playerRoomId[msg.sender];
         require(joinedRoom == 0 || roomId == joinedRoom, "already joined another room");
         if (joinedRoom == 0) {
             // join the given room if not joined
@@ -196,16 +196,16 @@ contract Royale {
         _move(roomId, playerIdInRoom, dir);
     }
 
-    function getAvailableRoom() public view returns (uint96) {
+    function getAvailableRoom() public view returns (uint64) {
         return _getAvailableRoom();
     }
 
-    function getBoard(uint96 roomId) public view returns (uint8[TILE_COUNT] memory) {
+    function getBoard(uint64 roomId) public view returns (uint8[TILE_COUNT] memory) {
         return rooms[roomId].board;
     }
 
     function getMyPosition() public view returns (uint8) {
-        uint96 roomId = playerRoomId[msg.sender];
+        uint64 roomId = playerRoomId[msg.sender];
         if (roomId == 0) {
             return 0;
         }
@@ -235,12 +235,12 @@ contract Royale {
         return currentPosition;
     }
 
-    function getPlayerRoomId(address player) public view returns (uint96) {
+    function getPlayerRoomId(address player) public view returns (uint64) {
         return playerRoomId[player];
     }
 
     function getPlayerByPosition(
-        uint96 roomId,
+        uint64 roomId,
         uint8 position
     ) private view returns (address) {
         uint8 playerIdInRoom = rooms[roomId].board[position];
