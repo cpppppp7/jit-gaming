@@ -30,33 +30,22 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
 
     preContractCall(input: PreContractCallInput): void {
 
-        sys.log("======== 1")
-
         let calldata = uint8ArrayToHex(input.call!.data);
         let method = this.parseCallMethod(calldata);
 
-        sys.log("======== 2")
-
         // if method is 'move(uint8)'
         if (method == "0x70e87aaf") {
-            sys.log("======== 3")
             let currentCaller = uint8ArrayToHex(input.call!.from);
             let sysPlayers = this.getSysPlayersList();
-            sys.log("======== 4")
             let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller).toLowerCase());
 
             // if player moves, sys players also move just-in-time
-            sys.log("======== 5")
             if (!isSysPlayer) {
-                sys.log("======== 6")
                 // do jit-call
                 for (let i = 0; i < sysPlayers.length; ++i) {
-                    sys.log("======== 7")
                     this.doMove(sysPlayers[i], input);
                 }
-                sys.log("======== 8")
             } else {
-                sys.log("======== 100")
                 // if sys player moves, do nothing in Aspect and pass the join point
                 return;
             }
@@ -101,14 +90,12 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
     //****************************
     doMove(sysPlayer: string, input: PreContractCallInput): void {
         // init jit call
-        sys.log("======== 9")
         let direction = this.getRandomDirection(input);
 
         let moveCalldata = ethereum.abiEncode('move', [
             ethereum.Number.fromU8(direction, 8)
         ]);
 
-        sys.log("======== 10")
         // Construct a JIT request (similar to the user operation defined in EIP-4337)
         let request = JitCallBuilder.simple(hexToUint8Array(sysPlayer),
             input.call!.to,
@@ -118,13 +105,9 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         // Submit the JIT call
         let response = sys.hostApi.evmCall.jitCall(request);
 
-        sys.log("======== 11")
         // Verify successful submission of the call
         sys.require(response.success, `Failed to submit the JIT call: ${sysPlayer}, err: ${response.errorMsg}, ret: ${uint8ArrayToString(response.ret)}`);
 
-        sys.log(`submitted call ${uint8ArrayToHex(response.jitInherentHashes[0])}`)
-
-        sys.log("======== 12")
         // debug code
         // sys.require(nonce == 0, 'real nonce: ' + nonce.toString()
         //     + "- jit call ret :" + sys.utils.uint8ArrayToString(response.ret)
@@ -226,22 +209,16 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
     }
 
     getSysPlayersList(): Array<string> {
-        sys.log("======== 3.1")
         let sysPlayersKey = sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY);
         let encodeSysPlayers = uint8ArrayToHex(sysPlayersKey.unwrap());
-        sys.log("======== 3.2")
-        sys.log(encodeSysPlayers);
 
         let encodeCount = encodeSysPlayers.slice(0, 4);
         let count = BigInt.fromString(encodeCount, 16).toInt32();
-        sys.log("======== 3.3")
         const array = new Array<string>();
         encodeSysPlayers = encodeSysPlayers.slice(4);
-        sys.log("======== 3.4")
         for (let i = 0; i < count; ++i) {
             array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1)).toLowerCase();
         }
-        sys.log("======== 3.5")
 
         return array;
     }
