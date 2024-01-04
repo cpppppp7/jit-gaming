@@ -184,7 +184,7 @@ contract Royale {
         require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
 
         uint96 joinedRoom = playerRoomId[msg.sender];
-        require(joinedRoom == 0 || roomId == joinedRoom, "not joined any room");
+        require(joinedRoom == 0 || roomId == joinedRoom, "already joined another room");
         if (joinedRoom == 0) {
             // join the given room if not joined
             // note this might fail if the room is full
