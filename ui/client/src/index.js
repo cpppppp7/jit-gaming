@@ -26,8 +26,8 @@ const artela = {
     symbol: 'ART',
   },
   rpcUrls: {
-    public: { http: ['https://testnet-rpc1.artela.network/'] },
-    default: { http: ['https://testnet-rpc1.artela.network/'] },
+    public: { http: ['http://127.0.0.1:8545/'] },
+    default: { http: ['http://127.0.0.1:8545/'] },
   },
   blockExplorers: {
     default: { name: 'SnowTrace', url: 'https://testnet-scan.artela.network/' },
