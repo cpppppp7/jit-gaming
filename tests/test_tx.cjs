@@ -7,8 +7,8 @@ const fs = require("fs");
 const { numberToHex } = require("@artela/web3-utils");
 const BigNumber = require('bignumber.js');
 
-const contractBin = fs.readFileSync('./contracts/build/contract/Counter.bin', "utf-8");
-const abi = fs.readFileSync('./contracts/build/contract/Counter.abi', "utf-8")
+const contractBin = fs.readFileSync('./contracts/build/contract/Royale.bin', "utf-8");
+const abi = fs.readFileSync('./contracts/build/contract/Royale.abi', "utf-8")
 const contractABI = JSON.parse(abi);
 const EthereumTx = require('ethereumjs-tx').Transaction;
 
@@ -96,7 +96,7 @@ async function f() {
     let aspectDeployData = aspect.deploy({
         data: '0x' + aspectCode,
         properties: [],
-        joinPoints:["PreContractCall"],
+        joinPoints:["PostContractCall"],
         paymaster: account.address,
         proof: '0x0'
     }).encodeABI();
@@ -252,7 +252,7 @@ async function f() {
     // ******************************************
 
     // call fisrt, if success then send tx
-    calldata = contract.methods.move(2).encodeABI();
+    calldata = contract.methods.move(1, 2).encodeABI();
     tx = {
         from: account.address,
         data: calldata,
@@ -265,7 +265,7 @@ async function f() {
     console.log("ret ", ret);
 
     // send tx
-    await contract.methods.move(2).send({
+    await contract.methods.move(1, 2).send({
         from: account.address,
         gas: 20000000,
         gasPrice: gasPrice,
@@ -277,21 +277,6 @@ async function f() {
     }).on('error', function (error) {
         console.log('move error: ', error);
     });
-
-    op = "0x1002";
-    params = rmPrefix(walletAddr);
-    calldata = aspect.operation(op + params).encodeABI();
-
-    console.log("op: ", op);
-    console.log("params: ", params);
-
-    ret = await web3.eth.call({
-        to: aspectCore.options.address, // contract address
-        data: calldata
-    });
-
-    console.log("ret ", ret);
-    console.log("get aa wallet nonces  ", web3.eth.abi.decodeParameter('string', ret));
 
     console.log(`all test cases pass`);
 

@@ -33,12 +33,11 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
     static readonly SYS_PLAYER_ROOM_KEY: string = 'SYS_PLAYER_ROOM_KEY';
 
     postContractCall(input: PostContractCallInput): void {
-
         let calldata = uint8ArrayToHex(input.call!.data);
         let method = this.parseCallMethod(calldata);
 
-        // if method is 'move(uint8)'
-        if (method == "0x70e87aaf") {
+        // if method is 'move(uint64,uint8)'
+        if (method == "0x72d7d60c") {
             let currentCaller = uint8ArrayToHex(input.call!.from);
             let sysPlayers = this.getSysPlayersList();
             let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller).toLowerCase());
@@ -59,11 +58,12 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
                 return;
             }
         }
+
     }
 
     extractRoomId(callData: Uint8Array): u64 {
-        let roomId = callData.subarray(4, 36);
-        return BigInt.fromUint8Array(roomId).toUInt64();
+        let roomId = u64.parse(uint8ArrayToHex(callData.subarray(28, 36)));
+        return roomId;
     }
 
     getSysPlayerAccount(roomId: u64): string {
