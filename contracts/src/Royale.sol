@@ -200,7 +200,8 @@ contract Royale {
         return playerRoomId[msg.sender];
     }
 
-    function getBoard(uint64 roomId) public view returns (uint8[TILE_COUNT] memory) {
+    function getBoard() public view returns (uint8[TILE_COUNT] memory) {
+        uint64 roomId = playerRoomId[msg.sender];
         return rooms[roomId].board;
     }
 
