@@ -4,11 +4,11 @@ import './App.css';
 import {ConnectButton} from '@rainbow-me/rainbowkit';
 import royaleAbi from './royale-abi.json';
 import Web3 from 'web3';
-import { useAccount, useSendTransaction, usePrepareSendTransaction } from 'wagmi'
+import {useAccount, usePrepareSendTransaction, useSendTransaction} from 'wagmi'
 
 // Environment variables for RPC URL and Contract Address
 const rpcUrl = 'http://127.0.0.1:8545'
-const contractAddr = '0xe0A1E51eae6898DCafaD078840Bb9503d792D712';
+const contractAddr = '0x9620F15e6B6468f05095cAC9474c35E2764532e1';
 
 function App() {
   // Create an empty map for initial state
@@ -52,7 +52,13 @@ function App() {
       return;
     }
 
-    setPlayerRoomId(await contract.methods.getPlayerRoomId(gameWallet).call());
+    const playerRoomId = await contract.methods.getPlayerNumberInRoom(gameWallet).call();
+    const playerRoomIdNumber = parseInt(playerRoomId, 10);
+    if (playerRoomIdNumber) {
+      setPlayerRoomId(playerRoomIdNumber);
+    } else {
+      setHasGameWallet(false);
+    }
   }, [contract, gameWallet]);
 
   // Fetch board data from the blockchain
@@ -64,8 +70,7 @@ function App() {
 
     try {
       const boardData = await contract.methods.getBoard().call({from: gameWallet});
-      console.log('board', boardData);
-      return boardData;
+      return boardData.map((value) => parseInt(value, 10));
     } catch (error) {
       console.error('Error fetching board data:', error);
       return createEmptyArray();
@@ -78,7 +83,8 @@ function App() {
       return 0;
     }
     try {
-      setScore(await contract.methods.getScore(gameWallet).call());
+      const score = await contract.methods.getScore(gameWallet).call();
+      setScore(parseInt(score, 10));
     } catch (error) {
       console.error('Error fetching user score:', error);
       setScore(0);
@@ -143,10 +149,12 @@ function App() {
       const joinedRoom = await contract.methods.getJoinedRoom().call({
         from: gameWallet
       });
-      if (joinedRoom) {
-        setRoomId(joinedRoom);
+      const roomId = parseInt(joinedRoom, 10);
+      if (roomId) {
+        setRoomId(roomId);
       } else {
-        console.error('Error: join room failed');
+        // if not joined any room, clear the game wallet
+        setHasGameWallet(false);
       }
     } catch (error) {
       console.error('Error getting joined room:', error);
@@ -206,16 +214,16 @@ function App() {
       'up': 2,
       'right': 3
     };
-    return directionMap[direction] || null;
+    return directionMap[direction];
   };
 
   const prepare = useCallback(async () => {
     const updateMap = async () => {
       const boardData = await fetchBoardData();
       const boardDataFinal2D = convertTo2DArray(boardData, 10);
+      console.log(boardDataFinal2D);
       setMapData(boardDataFinal2D);
       getPlayerNumberFromAddress().catch(console.error);
-      loadJoinedRoom().catch(console.error);
       loadUserScore().catch(console.error);
     };
     updateMap().catch(console.error).then(() => {
@@ -223,7 +231,7 @@ function App() {
       setHasGameWallet(true);
     });
     setRefreshIntervalId(setInterval(updateMap, 1000));
-  }, [convertTo2DArray, fetchBoardData, getPlayerNumberFromAddress, loadJoinedRoom, loadUserScore]);
+  }, [convertTo2DArray, fetchBoardData, getPlayerNumberFromAddress, loadUserScore]);
 
 
   const deposit = useCallback(async () => {
@@ -293,8 +301,6 @@ function App() {
         }
       }
 
-      await loadJoinedRoom();
-
       if (roomId) {
         prepare().catch(console.error);
         return;
@@ -316,13 +322,13 @@ function App() {
         await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
             .on('receipt', receipt => {
               console.log("Joined room. Transaction receipt:", receipt);
-              prepare().catch(console.error);
+              loadJoinedRoom().then(() => prepare().catch(console.error));
             });
       } catch (error) {
         console.error('Error joining room:', error);
       }
     }
-    load().catch(console.error);
+    loadJoinedRoom().then(() => load().catch(console.error));
   }, [web3, contract, gameWallet, playerSK, deposit, address, prepare, loadJoinedRoom, roomId]);
 
   // Check and handle game account logic

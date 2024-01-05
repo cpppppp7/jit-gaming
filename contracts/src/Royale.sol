@@ -169,6 +169,7 @@ contract Royale {
                 address tileOccupantAddress = playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
                 delete playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
                 delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, tileOccupantAddress)];
+                delete playerRoomId[tileOccupantAddress];
 
                 // update the killer's score and emit event
                 emit Scored(msg.sender, ++scores[msg.sender]);
@@ -203,6 +204,9 @@ contract Royale {
 
     function getBoard() public view returns (uint8[TILE_COUNT] memory) {
         uint64 roomId = playerRoomId[msg.sender];
+        if (roomId == 0) {
+            return new uint8[TILE_COUNT]();
+        }
         return rooms[roomId - 1].board;
     }
 
@@ -239,6 +243,15 @@ contract Royale {
 
     function getPlayerRoomId(address player) public view returns (uint64) {
         return playerRoomId[player];
+    }
+
+    function getPlayerNumberInRoom(address player) public view returns (uint8) {
+        uint64 roomId = playerRoomId[player];
+        if (roomId == 0) {
+            return 0;
+        }
+        uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, player)];
+        return playerIdInRoom;
     }
 
     function getPlayerByPosition(
