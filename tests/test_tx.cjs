@@ -278,6 +278,14 @@ async function f() {
         console.log('move error: ', error);
     });
 
+    const board = await contract.methods.getBoard().call({
+        from: account.address,
+        gas: 20000000,
+        gasPrice: gasPrice,
+    });
+
+    console.log(board);
+
     console.log(`all test cases pass`);
 
 }

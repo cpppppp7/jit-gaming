@@ -136,7 +136,7 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
         let direction = this.getRandomDirection(input);
 
         let moveCalldata = ethereum.abiEncode('move', [
-            ethereum.Number.fromU64(roomId),
+            ethereum.Number.fromU64(roomId, 64),
             ethereum.Number.fromU8(direction, 8)
         ]);
 
