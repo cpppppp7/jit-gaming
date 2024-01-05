@@ -30,7 +30,7 @@ function App() {
 
   const { config } = usePrepareSendTransaction({
     to: gameWallet.trim(),
-    value: 10000000000000n,
+    value: 100000000000000n,
   });
 
   const {
@@ -56,8 +56,6 @@ function App() {
     const playerRoomIdNumber = parseInt(playerRoomId, 10);
     if (playerRoomIdNumber) {
       setPlayerRoomId(playerRoomIdNumber);
-    } else {
-      setHasGameWallet(false);
     }
   }, [contract, gameWallet]);
 
@@ -87,7 +85,6 @@ function App() {
       setScore(parseInt(score, 10));
     } catch (error) {
       console.error('Error fetching user score:', error);
-      setScore(0);
     }
   }, [contract, gameWallet]);
 
@@ -152,9 +149,6 @@ function App() {
       const roomId = parseInt(joinedRoom, 10);
       if (roomId) {
         setRoomId(roomId);
-      } else {
-        // if not joined any room, clear the game wallet
-        setHasGameWallet(false);
       }
     } catch (error) {
       console.error('Error getting joined room:', error);
@@ -163,13 +157,19 @@ function App() {
 
   // Update map and load joined room periodically
   useEffect(() => {
+    if (refreshIntervalId && !hasGameWallet) {
+      // clear the timer if we don't have game wallet
+      clearInterval(refreshIntervalId);
+      setRefreshIntervalId(0);
+    }
+
     return () => {
       // release the timer
       if (refreshIntervalId) {
         clearInterval(refreshIntervalId);
       }
     }
-  }, [refreshIntervalId]);
+  }, [refreshIntervalId, hasGameWallet]);
 
   // Handle keydown events for player movement
   useEffect(() => {
@@ -220,18 +220,20 @@ function App() {
   const prepare = useCallback(async () => {
     const updateMap = async () => {
       const boardData = await fetchBoardData();
+      const isEmptyBoard = boardData.every((value) => value === 0);
       const boardDataFinal2D = convertTo2DArray(boardData, 10);
-      console.log(boardDataFinal2D);
       setMapData(boardDataFinal2D);
-      getPlayerNumberFromAddress().catch(console.error);
-      loadUserScore().catch(console.error);
+      await loadUserScore();
+      if (isEmptyBoard) {
+        setHasGameWallet(false);
+        setGameWallet('');
+      }
     };
-    updateMap().catch(console.error).then(() => {
-      // enable the interface after we have prepared everything
+    updateMap().then(() => {
+      setRefreshIntervalId(setInterval(updateMap, 1000));
       setHasGameWallet(true);
     });
-    setRefreshIntervalId(setInterval(updateMap, 1000));
-  }, [convertTo2DArray, fetchBoardData, getPlayerNumberFromAddress, loadUserScore]);
+  }, [convertTo2DArray, fetchBoardData, loadUserScore]);
 
 
   const deposit = useCallback(async () => {
@@ -274,7 +276,6 @@ function App() {
   // Clear all states
   const clearStates = useCallback(() => {
     setMapData(createEmptyMap());
-    setScore(0);
     setPlayerRoomId(0);
     setRoomId(0);
     setHasGameWallet(false);
@@ -293,43 +294,40 @@ function App() {
       if (gameAccountBalance < 10000000000000n) {
         console.log("Insufficient balance, initializing transaction...");
         // Transaction logic to deposit funds into game account
-        try {
-          await deposit();
-        } catch (error) {
-          console.error('Error in deposit transaction:', error);
-          return;
-        }
+        await deposit();
       }
 
       if (roomId) {
-        prepare().catch(console.error);
+        await getPlayerNumberFromAddress();
+        await prepare();
         return;
       }
       // Join a room logic
-      try {
-        const joinRoomData = contract.methods.join().encodeABI();
-        const gasPrice = await web3.eth.getGasPrice();
+      const joinRoomData = contract.methods.join().encodeABI();
+      const gasPrice = await web3.eth.getGasPrice();
 
-        const tx = {
-          from: gameWallet,
-          to: contractAddr,
-          data: joinRoomData,
-          gasPrice,
-          gas: 20000000
-        };
+      const tx = {
+        from: gameWallet,
+        to: contractAddr,
+        data: joinRoomData,
+        gasPrice,
+        gas: 20000000
+      };
 
-        let signedTx = await web3.eth.accounts.signTransaction(tx, playerSK);
-        await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
-            .on('receipt', receipt => {
-              console.log("Joined room. Transaction receipt:", receipt);
-              loadJoinedRoom().then(() => prepare().catch(console.error));
-            });
-      } catch (error) {
-        console.error('Error joining room:', error);
-      }
+      let signedTx = await web3.eth.accounts.signTransaction(tx, playerSK);
+      await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
+        .on('receipt', receipt => {
+          console.log("Joined room. Transaction receipt:", receipt);
+        });
+      await getPlayerNumberFromAddress();
+      await loadJoinedRoom();
+      await prepare();
     }
-    loadJoinedRoom().then(() => load().catch(console.error));
-  }, [web3, contract, gameWallet, playerSK, deposit, address, prepare, loadJoinedRoom, roomId]);
+    loadJoinedRoom().then(() => load().catch(() => {
+      setHasGameWallet(false);
+      setGameWallet('');
+    }));
+  }, [web3, contract, gameWallet, hasGameWallet, playerSK, deposit, address, prepare, loadJoinedRoom, roomId, getPlayerNumberFromAddress]);
 
   // Check and handle game account logic
   const handleGameAccount = useCallback(async () => {
