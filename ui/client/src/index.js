@@ -13,6 +13,7 @@ import { configureChains, createConfig, WagmiConfig } from 'wagmi';
 
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { publicProvider } from 'wagmi/providers/public';
+import {jsonRpcProvider} from "@wagmi/core/providers/jsonRpc";
 
 const artela = {
   id: 11820,
@@ -39,8 +40,13 @@ const artela = {
 const { chains, publicClient } = configureChains(
   [artela],
   [
-    alchemyProvider({ apiKey: "b4dmYzJ5ztY18ziStcClJ_jRjEdieQqo" }),
-    publicProvider()
+    jsonRpcProvider({ rpc: () => {
+        return  {
+          http: 'http://127.0.0.1:8545/',
+        }
+      }}),
+    // alchemyProvider({ apiKey: "b4dmYzJ5ztY18ziStcClJ_jRjEdieQqo" }),
+    // publicProvider()
   ]
 );
 

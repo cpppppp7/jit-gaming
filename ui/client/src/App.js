@@ -227,6 +227,10 @@ function App() {
 
 
   const deposit = useCallback(async () => {
+    if (!sendTransactionAsync) {
+        console.log('Not initialized');
+        return;
+    }
     let txHash = "";
     let ret = await sendTransactionAsync();
     txHash = ret.hash;
@@ -258,6 +262,18 @@ function App() {
       throw new Error('Deposit failed: ' + txReceiptStatus);
     }
   }, [web3, sendTransactionAsync]);
+
+  // Clear all states
+  const clearStates = useCallback(() => {
+    setMapData(createEmptyMap());
+    setScore(0);
+    setPlayerRoomId(0);
+    setRoomId(0);
+    setHasGameWallet(false);
+    setGameWallet("");
+    setPlayerSK("");
+    setRefreshIntervalId(0);
+  }, []);
 
   useEffect(() => {
     if (!gameWallet) {
@@ -311,6 +327,9 @@ function App() {
 
   // Check and handle game account logic
   const handleGameAccount = useCallback(async () => {
+    // clear the state so make sure the hooks are properly triggered
+    await clearStates();
+
     let sKeyPrivKey = loadGameAccount(address);
     if (!sKeyPrivKey) {
       sKeyPrivKey = web3.eth.accounts.create(web3.utils.randomHex(32)).privateKey;
@@ -321,7 +340,7 @@ function App() {
 
     let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
     setGameWallet(sKeyAccount.address);
-  }, [web3, address]);
+  }, [web3, address, clearStates]);
 
   // Load game account from local storage
   const loadGameAccount = (wallet) => {
