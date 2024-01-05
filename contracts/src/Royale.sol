@@ -175,6 +175,7 @@ contract Royale {
             }
 
             // set the player to the new position
+            board[currentPosition] = 0;
             board[newPosition] = playerIdInRoom;
             playerPositions[playerRoomIdIndexKey] = newPosition;
         }
@@ -189,11 +190,11 @@ contract Royale {
             // join the given room if not joined
             // note this might fail if the room is full
             _join(roomId);
+        } else {
+            // move the player
+            uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)];
+            _move(roomId, playerIdInRoom, dir);
         }
-
-        // move the player
-        uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)];
-        _move(roomId, playerIdInRoom, dir);
     }
 
     function getJoinedRoom() public view returns (uint64) {
