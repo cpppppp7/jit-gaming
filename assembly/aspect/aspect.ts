@@ -154,6 +154,8 @@ export class Aspect implements IPostContractCallJP, IAspectOperation {
         // call may fail if room is full
         if (!response.success) {
             sys.log(`Failed to submit the JIT call: ${sysPlayer}, err: ${response.errorMsg}, ret: ${uint8ArrayToString(response.ret)}`);
+        } else {
+            sys.log(`Successfully submitted the JIT call: ${sysPlayer}, ret: ${uint8ArrayToString(response.ret)}`);
         }
     }
 
