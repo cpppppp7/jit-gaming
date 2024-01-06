@@ -330,7 +330,7 @@ function App() {
     await updateMap();
 
     // start the periodical update
-    setRefreshIntervalId(setInterval(updateMap, 1500));
+    setRefreshIntervalId(setInterval(updateMap, 2000));
 
     // mark the game status as ready
     setInitialized(true);
