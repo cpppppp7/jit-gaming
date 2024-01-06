@@ -17,7 +17,7 @@ import { publicProvider } from 'wagmi/providers/public';
 const artela = {
   id: 11822,
   name: 'Artela Testnet',
-  network: 'artela-betanet',
+  network: 'artela-testnet',
   iconUrl: 'https://framerusercontent.com/images/xLv7JZ8nzPaZ9zk7j63YbRZHqY.png',
   iconBackground: '#fff',
   nativeCurrency: {
