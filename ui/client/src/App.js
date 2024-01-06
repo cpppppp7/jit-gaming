@@ -25,7 +25,7 @@ function App() {
   const [gameWallet, setGameWallet] = useState("");
   const [web3, setWeb3] = useState(null);
   const [contract, setContract] = useState(null);
-  const [hasGameWallet, setHasGameWallet] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const [refreshIntervalId, setRefreshIntervalId] = useState(0);
 
   const { config } = usePrepareSendTransaction({
@@ -78,7 +78,7 @@ function App() {
   const loadUserScore = useCallback(async () => {
     if (!contract || !gameWallet) {
       console.log('Not initialized');
-      return 0;
+      return;
     }
     try {
       const score = await contract.methods.getScore(gameWallet).call();
@@ -109,6 +109,7 @@ function App() {
       return;
     }
 
+    // send move tx with burnable wallet
     setIsMoving(true);
     try {
       const player = web3.eth.accounts.privateKeyToAccount(playerSK);
@@ -135,30 +136,29 @@ function App() {
     }
   }, [web3, contract, playerSK, roomId]);
 
-  // Get player's room ID
+  // Get player's joined room number
   const loadJoinedRoom = useCallback(async () => {
     if (!contract || !web3 || !gameWallet) {
       console.log('Not initialized');
       return;
     }
 
-    try {
-      const joinedRoom = await contract.methods.getJoinedRoom().call({
-        from: gameWallet
-      });
-      const roomId = parseInt(joinedRoom, 10);
-      if (roomId) {
-        setRoomId(roomId);
-      }
-    } catch (error) {
-      console.error('Error getting joined room:', error);
+    const joinedRoom = await contract.methods.getJoinedRoom().call({
+      from: gameWallet
+    });
+    const roomId = parseInt(joinedRoom, 10);
+    if (roomId) {
+      setRoomId(roomId);
+    } else {
+      console.log('Not joined any room');
     }
   }, [web3, contract, gameWallet]);
 
   // Update map and load joined room periodically
   useEffect(() => {
-    if (refreshIntervalId && !hasGameWallet) {
-      // clear the timer if we don't have game wallet
+    if (refreshIntervalId && !initialized) {
+      // clear the board update timer if we don't have game wallet
+      // save some resources when player is idle
       clearInterval(refreshIntervalId);
       setRefreshIntervalId(0);
     }
@@ -169,11 +169,12 @@ function App() {
         clearInterval(refreshIntervalId);
       }
     }
-  }, [refreshIntervalId, hasGameWallet]);
+  }, [refreshIntervalId, initialized]);
 
   // Handle keydown events for player movement
   useEffect(() => {
     const handleKeyDown = async (event) => {
+      // make sure user is not doing multiple moving at the same time
       if (isMoving) return;
 
       switch (event.key) {
@@ -219,20 +220,30 @@ function App() {
 
   const prepare = useCallback(async () => {
     const updateMap = async () => {
+      // update the board data
       const boardData = await fetchBoardData();
       const isEmptyBoard = boardData.every((value) => value === 0);
       const boardDataFinal2D = convertTo2DArray(boardData, 10);
       setMapData(boardDataFinal2D);
-      await loadUserScore();
+
       if (isEmptyBoard) {
-        setHasGameWallet(false);
+        // empty board means this player has been removed from the room
+        // we need to reset the status
+        setInitialized(false);
         setGameWallet('');
+      } else {
+        // update the user score
+        await loadUserScore();
       }
     };
-    updateMap().then(() => {
-      setRefreshIntervalId(setInterval(updateMap, 1000));
-      setHasGameWallet(true);
-    });
+    // for trigger the init map at the first time
+    await updateMap();
+
+    // start the periodical update
+    setRefreshIntervalId(setInterval(updateMap, 1000));
+
+    // mark the game status as ready
+    setInitialized(true);
   }, [convertTo2DArray, fetchBoardData, loadUserScore]);
 
 
@@ -241,16 +252,21 @@ function App() {
         console.log('Not initialized');
         return;
     }
+
+    // transfer 0.01 ART to the game account
     let txHash = "";
     let ret = await sendTransactionAsync();
     txHash = ret.hash;
     console.log('Deposit Transaction hash:', txHash);
     let txReceipt = false;
     let txReceiptStatus = false;
+
     // we wait maximum 1 min, if tx still not confirmed, we will throw an error
     const timeoutId = setTimeout(() => {
       throw new Error('Deposit transaction timeout');
     }, 10 * 60 * 1000);
+
+    // wait for the receipt
     while (!txReceipt) {
       await new Promise(resolve => setTimeout(resolve, 500));
       try {
@@ -278,7 +294,7 @@ function App() {
     setMapData(createEmptyMap());
     setPlayerRoomId(0);
     setRoomId(0);
-    setHasGameWallet(false);
+    setInitialized(false);
     setGameWallet("");
     setPlayerSK("");
     setRefreshIntervalId(0);
@@ -297,15 +313,18 @@ function App() {
         await deposit();
       }
 
+      // if player already in a room, retrieve the room info directly
       if (roomId) {
         await getPlayerNumberFromAddress();
         await prepare();
         return;
       }
-      // Join a room logic
+
+      // If player not in a room, join a room
       const joinRoomData = contract.methods.join().encodeABI();
       const gasPrice = await web3.eth.getGasPrice();
 
+      // send join room tx
       const tx = {
         from: gameWallet,
         to: contractAddr,
@@ -319,29 +338,43 @@ function App() {
         .on('receipt', receipt => {
           console.log("Joined room. Transaction receipt:", receipt);
         });
-      await getPlayerNumberFromAddress();
+
+
+      // load the joined room number
       await loadJoinedRoom();
+
+      // load player id in the current room
+      await getPlayerNumberFromAddress();
+
+      // prepare the game data
       await prepare();
     }
+
+    // need to first load the joined room info,
+    // just cover the case that the player is already in a room
     loadJoinedRoom().then(() => load().catch(() => {
-      setHasGameWallet(false);
+      setInitialized(false);
       setGameWallet('');
     }));
-  }, [web3, contract, gameWallet, hasGameWallet, playerSK, deposit, address, prepare, loadJoinedRoom, roomId, getPlayerNumberFromAddress]);
+  }, [web3, contract, gameWallet, initialized, playerSK, deposit, address, prepare, loadJoinedRoom, roomId, getPlayerNumberFromAddress]);
 
   // Check and handle game account logic
   const handleGameAccount = useCallback(async () => {
     // clear the state so make sure the hooks are properly triggered
     await clearStates();
 
+    // load burnable wallet from local storage
     let sKeyPrivKey = loadGameAccount(address);
     if (!sKeyPrivKey) {
+      // if wallet does not exist, create a new one
       sKeyPrivKey = web3.eth.accounts.create(web3.utils.randomHex(32)).privateKey;
       saveGameAccount(address, sKeyPrivKey);
     }
 
+    // update burnable wallet private key
     setPlayerSK(sKeyPrivKey);
 
+    // update burnable wallet address
     let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
     setGameWallet(sKeyAccount.address);
   }, [web3, address, clearStates]);
@@ -379,8 +412,8 @@ function App() {
                 <ConnectButton />
               </div>
               <div className="wallet-sub-panel">
-                <button className="rounded-button" onClick={handleGameAccount} disabled={hasGameWallet}>
-                  {hasGameWallet ? 'Game account: active' : 'Press to init game account'}
+                <button className="rounded-button" onClick={handleGameAccount} disabled={initialized}>
+                  {initialized ? 'Game account: active' : 'Press to init game account'}
                 </button>
                 <div className='line'>
                   your player id: <span className="player-number-value">{playerRoomId}</span>
