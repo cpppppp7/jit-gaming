@@ -13,6 +13,48 @@
   }
 }
 
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10; /* Make sure it's above other elements */
+}
+
+.modal-content {
+  background: #f3f3f3; /* This color should match the game panel */
+  padding: 20px;
+  border-radius: 10px;
+  border: 2px solid #ccc; /* This color should match the game border style */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal h2 {
+  color: #333; /* Adjust to match the game text color */
+  margin-bottom: 20px;
+}
+
+button.rejoin-game {
+  background-color: #c91f1f; /* Button color */
+  color: white;
+  padding: 10px 20px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button.rejoin-game:hover {
+  background-color: #b90000;
+}
+
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -68,7 +110,7 @@
 .rounded-button:disabled {
   border: 1px solid grey;
   color: black;
-  background-color: white;
+  background-color: lightgrey;
 }
 
 .rounded-button:hover:enabled {

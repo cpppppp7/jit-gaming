@@ -79,7 +79,7 @@ async function send() {
         to: contractAddr,
         data: instance.encodeABI(),
         gasPrice,
-        gas: !parseInt(argv.gas) | 20000000
+        gas: !parseInt(argv.gas) | 10000000
     }
     let signedTx = await web3.eth.accounts.signTransaction(tx, sender.privateKey);
     console.log('call contract tx: ' , tx);
