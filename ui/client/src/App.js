@@ -422,6 +422,9 @@ function App() {
       if (roomId) {
         await getPlayerNumberFromAddress();
         await prepare();
+
+        // disable loading
+        setIsLoading(false);
         return;
       }
 
