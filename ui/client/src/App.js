@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import Map from './components/Map';
+import LoadingScreen from './components/LoadingScreen';
 import './App.css';
 import {ConnectButton} from '@rainbow-me/rainbowkit';
 import royaleAbi from './royale-abi.json';
@@ -50,6 +51,7 @@ function App() {
   const [refreshIntervalId, setRefreshIntervalId] = useState(0);
   const [isCharacterDead, setIsCharacterDead] = useState(false);
   const [currentAccount, setCurrentAccount] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { config } = usePrepareSendTransaction({
     to: gameWallet.trim(),
@@ -450,6 +452,9 @@ function App() {
 
       // prepare the game data
       await prepare();
+
+      // disable loading
+      setIsLoading(false);
     }
 
     // need to first load the joined room info,
@@ -458,6 +463,7 @@ function App() {
       console.error('Game info load fail');
       setInitialized(false);
       setGameWallet('');
+      setIsLoading(false);
     }));
   }, [web3, contract, gameWallet, initialized, playerSK, deposit, address, prepare, loadJoinedRoom, roomId, getPlayerNumberFromAddress]);
 
@@ -465,6 +471,9 @@ function App() {
   const joinGame = useCallback(async () => {
     // clear the state so make sure the hooks are properly triggered
     await clearStates();
+
+    // show loading screen
+    setIsLoading(true);
 
     // wait 500ms, because if it is too fast, then the value refresh might not be triggered
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -508,41 +517,42 @@ function App() {
 
   // Render the component
   return (
-      <div className="App">
-        <div className="content">
-          <div className="map-container">
-            <ToastContainer />
-            <DeathModal show={isCharacterDead} onRejoin={handleRejoin} />
-            <Map mapData={mapData} />
-            <div className="control-panel">
-              <button onClick={() => move('up')} disabled={isMoving}>{isMoving ? '⌛️' : 'W'}</button>
-              <button onClick={() => move('left')} disabled={isMoving}>{isMoving ? '⌛️' : 'A'}</button>
-              <button onClick={() => move('right')} disabled={isMoving}>{isMoving ? '⌛️' : 'D'}</button>
-              <button onClick={() => move('down')} disabled={isMoving}>{isMoving ? '⌛️' : 'S'}</button>
+    <div className="App">
+      <div className="content">
+        <div className="map-container">
+          { isLoading && <LoadingScreen /> }
+          <ToastContainer />
+          <DeathModal show={isCharacterDead} onRejoin={handleRejoin} />
+          <Map mapData={mapData} />
+          <div className="control-panel">
+            <button onClick={() => move('up')} disabled={isMoving}>{isMoving ? '⌛️' : 'W'}</button>
+            <button onClick={() => move('left')} disabled={isMoving}>{isMoving ? '⌛️' : 'A'}</button>
+            <button onClick={() => move('right')} disabled={isMoving}>{isMoving ? '⌛️' : 'D'}</button>
+            <button onClick={() => move('down')} disabled={isMoving}>{isMoving ? '⌛️' : 'S'}</button>
+          </div>
+          <div className="wallet-panel">
+            <div className="wallet-sub-panel">
+              <ConnectButton />
             </div>
-            <div className="wallet-panel">
-              <div className="wallet-sub-panel">
-                <ConnectButton />
+            <div className="wallet-sub-panel">
+              <button className="rounded-button" onClick={handleRejoin} disabled={initialized || !isConnected}>
+                {initialized && isConnected ? 'Game account: active' : 'Press to init game account'}
+              </button>
+              <div className='line'>
+                your player id: <span className="player-number-value">{playerRoomId}</span>
               </div>
-              <div className="wallet-sub-panel">
-                <button className="rounded-button" onClick={handleRejoin} disabled={initialized || !isConnected}>
-                  {initialized && isConnected ? 'Game account: active' : 'Press to init game account'}
-                </button>
-                <div className='line'>
-                  your player id: <span className="player-number-value">{playerRoomId}</span>
-                </div>
-                <div className='line'>
-                  history score: <span className="player-number-value">{score}</span>
-                </div>
-                {/* Additional wallet information */}
-                <div className='line'>
-                  account: <span className="player-number-value">{address}</span>
-                </div>
+              <div className='line'>
+                history score: <span className="player-number-value">{score}</span>
+              </div>
+              {/* Additional wallet information */}
+              <div className='line'>
+                account: <span className="player-number-value">{address}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
   );
 }
 
