@@ -140,8 +140,8 @@ contract Royale {
         return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, salt))) % TILE_COUNT) + 1;
     }
 
-    function registerWalletOwner(address owner) public {
-        walletOwner[msg.sender] = owner;
+    function registerWalletOwner(address ownerAddress) public {
+        walletOwner[msg.sender] = ownerAddress;
     }
 
     function getWalletOwner(address wallet) public view returns (address) {
@@ -265,10 +265,10 @@ contract Royale {
         uint8 currentPosition,
         Dir dir
     ) private pure returns (uint8) {
-        uint256 arrayPosition = currentPosition - 1;
+        uint8 arrayPosition = currentPosition - 1;
 
         if (dir == Dir.DOWN) {
-            uint256 newPosition = arrayPosition + MAP_WIDTH;
+            uint8 newPosition = arrayPosition + MAP_WIDTH;
             return newPosition < TILE_COUNT ? (newPosition + 1) : currentPosition;
         } else if (dir == Dir.LEFT) {
             return arrayPosition % MAP_WIDTH == 0 ? currentPosition : currentPosition - 1;
