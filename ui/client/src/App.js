@@ -1,14 +1,29 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import Map from './components/Map';
 import './App.css';
 import {ConnectButton} from '@rainbow-me/rainbowkit';
 import royaleAbi from './royale-abi.json';
 import Web3 from 'web3';
 import {useAccount, usePrepareSendTransaction, useSendTransaction} from 'wagmi'
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Environment variables for RPC URL and Contract Address
 const rpcUrl = 'http://127.0.0.1:8545'
-const contractAddr = '0x9620F15e6B6468f05095cAC9474c35E2764532e1';
+const contractAddr = '0x26E7e1151e5EC0a1702c7075DaA5CbFEc65F6D9c';
+
+function DeathModal({ show, onRejoin }) {
+  if (!show) return null;
+
+  return (
+      <div className="modal">
+        <div className="modal-content">
+          <h2>You have been defeated</h2>
+          <button onClick={onRejoin} className="rejoin-game">Rejoin Game</button>
+        </div>
+      </div>
+  );
+}
 
 function App() {
   // Create an empty map for initial state
@@ -27,11 +42,15 @@ function App() {
   const [contract, setContract] = useState(null);
   const [initialized, setInitialized] = useState(false);
   const [refreshIntervalId, setRefreshIntervalId] = useState(0);
+  const [isCharacterDead, setIsCharacterDead] = useState(false);
+  const [currentAccount, setCurrentAccount] = useState("");
 
   const { config } = usePrepareSendTransaction({
     to: gameWallet.trim(),
     value: 100000000000000n,
   });
+
+  let walletChangeEventRegistered = useRef(false);
 
   const {
     sendTransactionAsync
@@ -44,7 +63,10 @@ function App() {
   }, []);
 
   // Account information from wagmi
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount({ async onDisconnect() {
+      toast.info('Wallet disconnected, game quit');
+      await clearStates();
+  }});
 
   const getPlayerNumberFromAddress = useCallback(async () => {
     if (!contract || !gameWallet) {
@@ -85,6 +107,7 @@ function App() {
       setScore(parseInt(score, 10));
     } catch (error) {
       console.error('Error fetching user score:', error);
+      toast.error('Failed to fetch your score');
     }
   }, [contract, gameWallet]);
 
@@ -154,6 +177,26 @@ function App() {
     }
   }, [web3, contract, gameWallet]);
 
+  // Clear all states
+  const clearStates = useCallback(async () => {
+    console.log('Clearing states...');
+    clearInterval(refreshIntervalId);
+    setRefreshIntervalId(0);
+
+    // wait 500ms, because if it is too fast, then the value refresh might not be triggered
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    setMapData(createEmptyMap());
+    setPlayerRoomId(0);
+    setRoomId(0);
+    setInitialized(false);
+    setGameWallet("");
+    setPlayerSK("");
+    setScore(0);
+
+    console.log('States cleared');
+  }, [refreshIntervalId]);
+
   // Update map and load joined room periodically
   useEffect(() => {
     if (refreshIntervalId && !initialized) {
@@ -218,8 +261,44 @@ function App() {
     return directionMap[direction];
   };
 
+  // handle account change
+  useEffect(() => {
+    const handleAccountsChanged = async (accounts) => {
+      // Handle the new accounts, or lack thereof.
+      // "accounts" will always be an array, but it can be empty.
+      if (accounts.length === 0) {
+        console.log('Not connected to a wallet');
+      } else if (accounts[0] !== currentAccount) {
+        toast.info('Wallet account changed, please rejoin the game');
+        setCurrentAccount(accounts[0]);
+        await clearStates();
+      }
+    };
+
+    if (!walletChangeEventRegistered.current && window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      walletChangeEventRegistered.current = true;
+    }
+
+    // Clean up the event listener
+    return () => {
+      if (window.ethereum) {
+        walletChangeEventRegistered.current = false;
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      }
+    };
+  }, [currentAccount, clearStates]); // Include any dependencies your effect relies on. If "currentAccount" is used inside the effect, it should be listed here.
+
   const prepare = useCallback(async () => {
     const updateMap = async () => {
+      if (!gameWallet) {
+        console.log('Not initialized');
+        setMapData(createEmptyMap());
+        return;
+      }
+
+      console.log('Updating map...');
+
       // update the board data
       const boardData = await fetchBoardData();
       const isEmptyBoard = boardData.every((value) => value === 0);
@@ -227,24 +306,27 @@ function App() {
       setMapData(boardDataFinal2D);
 
       if (isEmptyBoard) {
+        console.log('Empty board, player has been removed from the room');
         // empty board means this player has been removed from the room
         // we need to reset the status
+        setIsCharacterDead(true);
         setInitialized(false);
         setGameWallet('');
       } else {
         // update the user score
         await loadUserScore();
+        console.log('Map updated');
       }
     };
     // for trigger the init map at the first time
     await updateMap();
 
     // start the periodical update
-    setRefreshIntervalId(setInterval(updateMap, 1000));
+    setRefreshIntervalId(setInterval(updateMap, 1500));
 
     // mark the game status as ready
     setInitialized(true);
-  }, [convertTo2DArray, fetchBoardData, loadUserScore]);
+  }, [gameWallet, convertTo2DArray, fetchBoardData, loadUserScore]);
 
 
   const deposit = useCallback(async () => {
@@ -263,6 +345,7 @@ function App() {
 
     // we wait maximum 1 min, if tx still not confirmed, we will throw an error
     const timeoutId = setTimeout(() => {
+      toast.error('Deposit to game wallet: transaction timeout');
       throw new Error('Deposit transaction timeout');
     }, 10 * 60 * 1000);
 
@@ -285,20 +368,10 @@ function App() {
     clearTimeout(timeoutId);
 
     if (!txReceiptStatus) {
+      toast.error('Deposit to game wallet: transaction failed');
       throw new Error('Deposit failed: ' + txReceiptStatus);
     }
   }, [web3, sendTransactionAsync]);
-
-  // Clear all states
-  const clearStates = useCallback(() => {
-    setMapData(createEmptyMap());
-    setPlayerRoomId(0);
-    setRoomId(0);
-    setInitialized(false);
-    setGameWallet("");
-    setPlayerSK("");
-    setRefreshIntervalId(0);
-  }, []);
 
   useEffect(() => {
     if (!gameWallet) {
@@ -313,6 +386,30 @@ function App() {
         await deposit();
       }
 
+      const gasPrice = await web3.eth.getGasPrice();
+
+      console.log("Checking wallet owner...");
+      const walletOwner = await contract.methods.getWalletOwner(gameWallet).call();
+      console.log("Wallet owner:", walletOwner);
+      if (walletOwner !== address) {
+        console.log("Game wallet not owned by the player, initializing binding transaction...");
+        // bind burnable wallet to the player
+        const bindData = contract.methods.registerWalletOwner(address).encodeABI();
+        // send join room tx
+        const tx = {
+          from: gameWallet,
+          to: contractAddr,
+          data: bindData,
+          gasPrice,
+          gas: 2000000
+        };
+        let signedTx = await web3.eth.accounts.signTransaction(tx, playerSK);
+        await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
+          .on('receipt', receipt => {
+            console.log("Wallet binding success. Transaction receipt:", receipt);
+          });
+      }
+
       // if player already in a room, retrieve the room info directly
       if (roomId) {
         await getPlayerNumberFromAddress();
@@ -322,7 +419,6 @@ function App() {
 
       // If player not in a room, join a room
       const joinRoomData = contract.methods.join().encodeABI();
-      const gasPrice = await web3.eth.getGasPrice();
 
       // send join room tx
       const tx = {
@@ -353,15 +449,19 @@ function App() {
     // need to first load the joined room info,
     // just cover the case that the player is already in a room
     loadJoinedRoom().then(() => load().catch(() => {
+      console.error('Game info load fail');
       setInitialized(false);
       setGameWallet('');
     }));
   }, [web3, contract, gameWallet, initialized, playerSK, deposit, address, prepare, loadJoinedRoom, roomId, getPlayerNumberFromAddress]);
 
   // Check and handle game account logic
-  const handleGameAccount = useCallback(async () => {
+  const joinGame = useCallback(async () => {
     // clear the state so make sure the hooks are properly triggered
     await clearStates();
+
+    // wait 500ms, because if it is too fast, then the value refresh might not be triggered
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // load burnable wallet from local storage
     let sKeyPrivKey = loadGameAccount(address);
@@ -378,6 +478,11 @@ function App() {
     let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
     setGameWallet(sKeyAccount.address);
   }, [web3, address, clearStates]);
+
+  const handleRejoin = useCallback(() => {
+    // Join game and reset the character death state
+    joinGame().then(() => setIsCharacterDead(false));
+  }, [joinGame]);
 
   // Load game account from local storage
   const loadGameAccount = (wallet) => {
@@ -400,6 +505,8 @@ function App() {
       <div className="App">
         <div className="content">
           <div className="map-container">
+            <ToastContainer />
+            <DeathModal show={isCharacterDead} onRejoin={handleRejoin} />
             <Map mapData={mapData} />
             <div className="control-panel">
               <button onClick={() => move('up')} disabled={isMoving}>{isMoving ? '⌛️' : 'W'}</button>
@@ -412,8 +519,8 @@ function App() {
                 <ConnectButton />
               </div>
               <div className="wallet-sub-panel">
-                <button className="rounded-button" onClick={handleGameAccount} disabled={initialized}>
-                  {initialized ? 'Game account: active' : 'Press to init game account'}
+                <button className="rounded-button" onClick={handleRejoin} disabled={initialized || !isConnected}>
+                  {initialized && isConnected ? 'Game account: active' : 'Press to init game account'}
                 </button>
                 <div className='line'>
                   your player id: <span className="player-number-value">{playerRoomId}</span>

@@ -31,6 +31,11 @@ contract Royale {
 
     event Scored(address player, uint256 score);
 
+    // Quick lookup for player's wallet owner
+    // key: player burnable address wallet address
+    // value: player's actual wallet address
+    mapping(address => address) public walletOwner;
+
     // Quick lookup for player position in a room
     // key: first 64 bit for room id, next 8 bit for player id
     // value: player position tile number
@@ -135,6 +140,37 @@ contract Royale {
         return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, salt))) % TILE_COUNT);
     }
 
+    function registerWalletOwner(address owner) public {
+        walletOwner[msg.sender] = owner;
+    }
+
+    function getWalletOwner(address wallet) public view returns (address) {
+        return walletOwner[wallet];
+    }
+
+    function resetRoom(uint64 roomId) public {
+        // just in case if there is some bug we cannot fix, or all rooms are occupied by zombies
+        require(msg.sender == owner, "not owner");
+        require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
+        Room storage room = rooms[roomId - 1];
+        if (room.playerCount == 0) {
+            return;
+        }
+        for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
+            address player = room.players[i];
+            if (player != address(0)) {
+                uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, i + 1);
+                delete playerPositions[playerRoomIdIndexKey];
+                delete playerRoomIdReverseIndex[playerRoomIdIndexKey];
+                delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, player)];
+                delete playerRoomId[player];
+            }
+        }
+        delete room.players;
+        delete room.board;
+        room.playerCount = 0;
+    }
+
     function _move(uint64 roomId, uint8 playerIdInRoom, Dir dir) private {
         uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, playerIdInRoom);
         uint8 currentPosition = playerPositions[playerRoomIdIndexKey];
@@ -172,7 +208,7 @@ contract Royale {
                 delete playerRoomId[tileOccupantAddress];
 
                 // update the killer's score and emit event
-                emit Scored(msg.sender, ++scores[msg.sender]);
+                emit Scored(walletOwner[msg.sender], ++scores[msg.sender]);
             }
 
             // set the player to the new position
@@ -205,7 +241,8 @@ contract Royale {
     function getBoard() public view returns (uint8[TILE_COUNT] memory) {
         uint64 roomId = playerRoomId[msg.sender];
         if (roomId == 0) {
-            return new uint8[TILE_COUNT]();
+            uint8[TILE_COUNT] memory board;
+            return board;
         }
         return rooms[roomId - 1].board;
     }
