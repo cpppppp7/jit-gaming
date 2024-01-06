@@ -463,8 +463,8 @@ function App() {
 
     // need to first load the joined room info,
     // just cover the case that the player is already in a room
-    loadJoinedRoom().then(() => load().catch(() => {
-      console.error('Game info load fail');
+    loadJoinedRoom().then(() => load().catch((err) => {
+      console.error('Game info load fail', err);
       setInitialized(false);
       setGameWallet('');
       setIsLoading(false);
