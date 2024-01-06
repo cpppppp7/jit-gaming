@@ -392,6 +392,7 @@ function App() {
         console.log("Insufficient balance, initializing transaction...");
         // Transaction logic to deposit funds into game account
         await deposit();
+        setIsLoading(true);
       }
 
       const gasPrice = await web3.eth.getGasPrice();
