@@ -9,8 +9,11 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Environment variables for RPC URL and Contract Address
-const rpcUrl = 'http://127.0.0.1:8545'
-const contractAddr = '0x26E7e1151e5EC0a1702c7075DaA5CbFEc65F6D9c';
+const rpcUrls = [
+  'https://betanet-rpc1.artela.network',
+  'https://betanet-rpc2.artela.network'
+]
+const contractAddr = '0xD3002fFCc8D3e6c4Ac6A8ae5a7540aA4d47E9298';
 
 function DeathModal({ show, onRejoin }) {
   if (!show) return null;
@@ -26,6 +29,9 @@ function DeathModal({ show, onRejoin }) {
 }
 
 function App() {
+  // Load balancing between the nodes, randomly choose one
+  const rpcUrl = rpcUrls[Math.floor(Math.random() * rpcUrls.length)];
+
   // Create an empty map for initial state
   const createEmptyMap = () => Array.from({ length: 10 }, () => Array(10).fill(0));
   const createEmptyArray = () => Array.from({ length: 100 }, () => 0);
