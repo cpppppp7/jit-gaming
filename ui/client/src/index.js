@@ -18,7 +18,7 @@ import {jsonRpcProvider} from "@wagmi/core/providers/jsonRpc";
 const artela = {
   id: 11820,
   name: 'Artela',
-  network: 'artela-testnet-2',
+  network: 'artela-betanet',
   iconUrl: 'https://framerusercontent.com/images/xLv7JZ8nzPaZ9zk7j63YbRZHqY.png',
   iconBackground: '#fff',
   nativeCurrency: {
@@ -26,13 +26,12 @@ const artela = {
     name: 'Artela',
     symbol: 'ART',
   },
-  rpcUrls: {
-    public: { http: ['http://127.0.0.1:8545/'] },
-    default: { http: ['http://127.0.0.1:8545/'] },
-  },
+  rpcUrls: [
+   'https://betanet-rpc1.artela.network',
+  ],
   blockExplorers: {
-    default: { name: 'SnowTrace', url: 'https://testnet-scan.artela.network/' },
-    etherscan: { name: 'SnowTrace', url: 'https://testnet-scan.artela.network/' },
+    default: { name: 'SnowTrace', url: 'https://betanet-scan.artela.network/' },
+    etherscan: { name: 'SnowTrace', url: 'https://betanet-scan.artela.network/' },
   },
   testnet: false,
 };
@@ -40,11 +39,7 @@ const artela = {
 const { chains, publicClient } = configureChains(
   [artela],
   [
-    jsonRpcProvider({ rpc: () => {
-        return  {
-          http: 'http://127.0.0.1:8545/',
-        }
-      }}),
+    jsonRpcProvider({ rpc: (chain) => ({ http: chain.rpcUrls }) }),
     // alchemyProvider({ apiKey: "b4dmYzJ5ztY18ziStcClJ_jRjEdieQqo" }),
     // publicProvider()
   ]
