@@ -36,6 +36,13 @@ contract Royale {
     // value: player's actual wallet address
     mapping(address => address) public walletOwner;
 
+    // Quick lookup for player's used burnable wallets
+    // this is just for dealing with some case that the indexing service failed to process event,
+    // so we can manually check the players scores
+    // key: player's actual wallet address
+    // value: array of player's burnable wallet addresses
+    mapping(address => address[]) public ownedWallets;
+
     // Quick lookup for player position in a room
     // key: first 64 bit for room id, next 8 bit for player id
     // value: player position tile number
@@ -137,15 +144,20 @@ contract Royale {
     }
 
     function generateRandomPosition(uint256 salt) private view returns (uint8) {
-        return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, salt))) % TILE_COUNT);
+        return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, salt))) % TILE_COUNT) + 1;
     }
 
-    function registerWalletOwner(address owner) public {
-        walletOwner[msg.sender] = owner;
+    function registerWalletOwner(address ownerAddress) public {
+        walletOwner[msg.sender] = ownerAddress;
+        ownedWallets[ownerAddress].push(msg.sender);
     }
 
     function getWalletOwner(address wallet) public view returns (address) {
         return walletOwner[wallet];
+    }
+
+    function getOwnedWallets(address ownerAddress) public view returns (address[] memory) {
+        return ownedWallets[ownerAddress];
     }
 
     function resetRoom(uint64 roomId) public {
@@ -180,12 +192,12 @@ contract Royale {
             // Assign a random position if the player doesn't exist on the board
             uint256 salt = 0;
             uint8 newPosition = generateRandomPosition(salt++);
-            while (board[newPosition] != 0) {
+            while (board[newPosition - 1] != 0) {
                 // Keep generating a new position until we find an empty tile
                 newPosition = generateRandomPosition(salt++);
             }
             playerPositions[playerRoomIdIndexKey] = newPosition;
-            board[newPosition] = playerIdInRoom;
+            board[newPosition - 1] = playerIdInRoom;
         } else {
             // Calculate new position based on direction
             uint8 newPosition = calculateNewPosition(currentPosition, dir);
@@ -195,7 +207,7 @@ contract Royale {
             }
 
             // if the tile was occupied, remove the previous occupant
-            uint8 tileOccupant = board[newPosition];
+            uint8 tileOccupant = board[newPosition - 1];
             if (tileOccupant != 0) {
                 // remove the previous occupant out of the board and room
                 uint128 tileOccupantRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, tileOccupant);
@@ -212,8 +224,8 @@ contract Royale {
             }
 
             // set the player to the new position
-            board[currentPosition] = 0;
-            board[newPosition] = playerIdInRoom;
+            board[currentPosition - 1] = 0;
+            board[newPosition - 1] = playerIdInRoom;
             playerPositions[playerRoomIdIndexKey] = newPosition;
         }
     }
@@ -265,16 +277,19 @@ contract Royale {
         uint8 currentPosition,
         Dir dir
     ) private pure returns (uint8) {
+        uint8 arrayPosition = currentPosition - 1;
+
         if (dir == Dir.DOWN) {
-            uint8 newPosition = currentPosition + MAP_WIDTH;
-            return newPosition >= TILE_COUNT ? currentPosition : newPosition;
+            uint8 newPosition = arrayPosition + MAP_WIDTH;
+            return newPosition < TILE_COUNT ? (newPosition + 1) : currentPosition;
         } else if (dir == Dir.LEFT) {
-            return (currentPosition % MAP_WIDTH) == 0 ? currentPosition : currentPosition - 1;
+            return arrayPosition % MAP_WIDTH == 0 ? currentPosition : currentPosition - 1;
         } else if (dir == Dir.UP) {
-            return currentPosition >= MAP_WIDTH ? (currentPosition - MAP_WIDTH) : currentPosition;
+            return arrayPosition < MAP_WIDTH ? currentPosition : currentPosition - MAP_WIDTH;
         } else if (dir == Dir.RIGHT) {
-            return (currentPosition % MAP_WIDTH) == (MAP_WIDTH - 1) ? currentPosition : currentPosition + 1;
+            return (arrayPosition + 1) % MAP_WIDTH == 0 ? currentPosition : currentPosition + 1;
         }
+
         return currentPosition;
     }
 

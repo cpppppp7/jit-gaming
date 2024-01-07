@@ -148,111 +148,115 @@ async function f() {
     // ******************************************
     // prepare 4. create jit AA
     // ******************************************
-    await factoryConract.methods.createAccount(account.address, nonce + 1).send({
-        from: account.address,
-        gas: 4000000,
-        gasPrice: gasPrice,
-        nonce: nonce++
-    }).on('transactionHash', (txHash) => {
-        console.log('aa wallet create tx: ', txHash);
-    }).on('receipt', function (receipt) {
-        console.log('aa wallet create receipt: ', receipt);
-    }).on('error', function (error) {
-        console.log('aa wallet create error: ', error);
-    });
+    // we need to register 10 npc here
+    for (let i =  0; i < 10; i++) {
+        await factoryConract.methods.createAccount(account.address, nonce + 1).send({
+            from: account.address,
+            gas: 4000000,
+            gasPrice: gasPrice,
+            nonce: nonce++
+        }).on('transactionHash', (txHash) => {
+            console.log('aa wallet create tx: ', txHash);
+        }).on('receipt', function (receipt) {
+            console.log('aa wallet create receipt: ', receipt);
+        }).on('error', function (error) {
+            console.log('aa wallet create error: ', error);
+        });
 
-    let walletAddr = await factoryConract.methods.getAddress(account.address, nonce).call();
-    console.log('wallet address: ', walletAddr);
-    let walletContract = new web3.eth.Contract(walletABI, walletAddr);
+        let walletAddr = await factoryConract.methods.getAddress(account.address, nonce).call();
+        console.log('wallet address: ', walletAddr);
+        let walletContract = new web3.eth.Contract(walletABI, walletAddr);
 
-    console.log('tranfer balance to aa');
-    let amount = 0.01;
-    tx = {
-        from: account.address,
-        nonce: nonce++,
-        gasPrice,
-        gas: 210000,
-        value: web3.utils.toWei(amount.toString(), 'ether'),
-        to: walletAddr,
-        chainId
+        console.log('tranfer balance to aa');
+        let amount = 10;
+        tx = {
+            from: account.address,
+            nonce: nonce++,
+            gasPrice,
+            gas: 210000,
+            value: web3.utils.toWei(amount.toString(), 'ether'),
+            to: walletAddr,
+            chainId
+        }
+
+        signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
+        receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+        console.log('tranfer balance to aa success');
+        console.log(receipt)
+
+        // ******************************************
+        // start testing session keys
+        // ******************************************
+
+        // ******************************************
+        // step 1. approve aa to aspect
+        // ******************************************
+
+        await walletContract.methods.approveAspects([aspect.options.address]).send({
+            from: account.address,
+            gas: 20000000,
+            gasPrice: gasPrice,
+            nonce: nonce++
+        }).on('transactionHash', (txHash) => {
+            console.log('aa wallet approve aspect tx: ', txHash);
+        }).on('receipt', function (receipt) {
+            console.log('aa wallet approve aspect receipt: ', receipt);
+        }).on('error', function (error) {
+            console.log('aa wallet approve aspect error: ', error);
+        });
+
+        // ******************************************
+        // step 2. register sys player
+        // ******************************************
+
+        let op = "0x0001";
+        let params = rmPrefix(walletAddr);
+
+        console.log("op: ", op);
+        console.log("params: ", params);
+
+        let calldata = aspect.operation(op + params).encodeABI();
+
+        tx = {
+            from: account.address,
+            nonce: nonce++,
+            gasPrice,
+            gas: 8000000,
+            data: calldata,
+            to: aspectCore.options.address,
+            chainId
+        }
+
+        signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
+        receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+        console.log('register sys player result: sucess');
+        console.log(receipt)
+
+        op = "0x1001";
+        params = "";
+        calldata = aspect.operation(op + params).encodeABI();
+
+        console.log("op: ", op);
+        console.log("params: ", params);
+
+        let ret = await web3.eth.call({
+            to: aspectCore.options.address, // contract address
+            data: calldata
+        });
+
+        console.log("ret ", ret);
+        console.log("get sys player ret  ", web3.eth.abi.decodeParameter('string', ret));
+        console.log(`registered sys player ${i}`);
     }
-
-    signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
-    receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-    console.log('tranfer balance to aa success');
-    console.log(receipt)
-
-    // ******************************************
-    // start testing session keys
-    // ******************************************
-
-    // ******************************************
-    // step 1. approve aa to aspect
-    // ******************************************
-
-    await walletContract.methods.approveAspects([aspect.options.address]).send({
-        from: account.address,
-        gas: 20000000,
-        gasPrice: gasPrice,
-        nonce: nonce++
-    }).on('transactionHash', (txHash) => {
-        console.log('aa wallet approve aspect tx: ', txHash);
-    }).on('receipt', function (receipt) {
-        console.log('aa wallet approve aspect receipt: ', receipt);
-    }).on('error', function (error) {
-        console.log('aa wallet approve aspect error: ', error);
-    });
-
-    // ******************************************
-    // step 2. register sys player
-    // ******************************************
-
-    let op = "0x0001";
-    let params = rmPrefix(walletAddr);
-
-    console.log("op: ", op);
-    console.log("params: ", params);
-
-    let calldata = aspect.operation(op + params).encodeABI();
-
-    tx = {
-        from: account.address,
-        nonce: nonce++,
-        gasPrice,
-        gas: 8000000,
-        data: calldata,
-        to: aspectCore.options.address,
-        chainId
-    }
-
-    signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
-    receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-    console.log('register sys player result: sucess');
-    console.log(receipt)
-
-    op = "0x1001";
-    params = "";
-    calldata = aspect.operation(op + params).encodeABI();
-
-    console.log("op: ", op);
-    console.log("params: ", params);
-
-    let ret = await web3.eth.call({
-        to: aspectCore.options.address, // contract address
-        data: calldata
-    });
-
-    console.log("ret ", ret);
-    console.log("get sys player ret  ", web3.eth.abi.decodeParameter('string', ret));
 
     // ******************************************
     // step 3. call contract
     // ******************************************
 
     // call fisrt, if success then send tx
-    calldata = contract.methods.move(1, 2).encodeABI();
+    let calldata = contract.methods.move(1, 2).encodeABI();
     tx = {
         from: account.address,
         data: calldata,
@@ -261,7 +265,7 @@ async function f() {
     }
 
     console.log("call move : ", tx);
-    ret = await web3.eth.call(tx);
+    let ret = await web3.eth.call(tx);
     console.log("ret ", ret);
 
     // send tx

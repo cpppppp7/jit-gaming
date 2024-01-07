@@ -14,7 +14,7 @@ const rpcUrls = [
   'https://betanet-rpc1.artela.network',
   'https://betanet-rpc2.artela.network'
 ]
-const contractAddr = '0xD3002fFCc8D3e6c4Ac6A8ae5a7540aA4d47E9298';
+const contractAddr = '0xA8DF3c46212BDfA525a91F3c2FDb3C199281a60e';
 
 function DeathModal({ show, onRejoin }) {
   if (!show) return null;
@@ -392,6 +392,7 @@ function App() {
         console.log("Insufficient balance, initializing transaction...");
         // Transaction logic to deposit funds into game account
         await deposit();
+        setIsLoading(true);
       }
 
       const gasPrice = await web3.eth.getGasPrice();
@@ -462,8 +463,8 @@ function App() {
 
     // need to first load the joined room info,
     // just cover the case that the player is already in a room
-    loadJoinedRoom().then(() => load().catch(() => {
-      console.error('Game info load fail');
+    loadJoinedRoom().then(() => load().catch((err) => {
+      console.error('Game info load fail', err);
       setInitialized(false);
       setGameWallet('');
       setIsLoading(false);
