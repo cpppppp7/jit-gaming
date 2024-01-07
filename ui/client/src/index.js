@@ -15,9 +15,9 @@ import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { publicProvider } from 'wagmi/providers/public';
 
 const artela = {
-  id: 11820,
-  name: 'Artela',
-  network: 'artela-testnet-2',
+  id: 11822,
+  name: 'Artela Testnet',
+  network: 'artela-testnet',
   iconUrl: 'https://framerusercontent.com/images/xLv7JZ8nzPaZ9zk7j63YbRZHqY.png',
   iconBackground: '#fff',
   nativeCurrency: {
@@ -26,12 +26,12 @@ const artela = {
     symbol: 'ART',
   },
   rpcUrls: {
-    public: { http: ['https://testnet-rpc1.artela.network/'] },
-    default: { http: ['https://testnet-rpc1.artela.network/'] },
+    public: { http: ['https://betanet-rpc1.artela.network/'] },
+    default: { http: ['https://betanet-rpc1.artela.network/'] },
   },
   blockExplorers: {
-    default: { name: 'SnowTrace', url: 'https://testnet-scan.artela.network/' },
-    etherscan: { name: 'SnowTrace', url: 'https://testnet-scan.artela.network/' },
+    default: { name: 'SnowTrace', url: 'https://betanet-scan.artela.network/' },
+    etherscan: { name: 'SnowTrace', url: 'https://betanet-scan.artela.network/' },
   },
   testnet: false,
 };

@@ -13,12 +13,12 @@ function parseBoardData(boardData) {
     // 解析board数据，根据您的智能合约输出格式进行调整
     // 这里假设boardData是一个包含Tile结构的数组
     return boardData.map(tile => {
-        if (tile.occupantId === '0') {
+        if (tile === 0) {
             return 'O';
         } else {
             // 使用地址的首个字符来表示玩家
             // return "X";
-            return tile.player[3].toUpperCase();
+            return tile.toString(16).slice(0, 1);
         }
     });
 }
@@ -49,38 +49,16 @@ function displayBoard(board) {
 
 
 // Tile结构体的ABI定义
-const tileABI = [
-    { type: 'uint8', name: 'occupantId' },
-    { type: 'bool', name: 'isWall' },
-    { type: 'address', name: 'player' },
-];
+const tileABI = [{"internalType":"uint8[100]","name":"","type":"uint8[100]"}];
 
 function pull() {
-    return execSync("cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"getBoard()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)").toString();
+    return execSync("cast call --rpc-url http://127.0.0.1:8545 $(grep CONTRACT .env | cut -d '=' -f2) \"getBoard()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)").toString();
 }
 
 // 解码Tile数据
 function decodeBoardData(encodedData) {
     // 假设你的board有100个Tile，根据你的实际数量调整
-    const tileCount = 100;
-    let boardData = [];
-    encodedData = encodedData.slice(2);
-
-    for (let i = 0; i < tileCount; i++) {
-        // 每个Tile的编码数据长度
-        const tileEncodedLength = 192; // 根据实际编码调整
-        const tileData = encodedData.slice(i * tileEncodedLength, (i + 1) * tileEncodedLength);
-
-        const decodedTile = web3.eth.abi.decodeParameters(tileABI, "0x" + tileData);
-
-        boardData.push({
-            occupantId: decodedTile.occupantId,
-            isWall: decodedTile.isWall,
-            player: decodedTile.player
-        });
-    }
-
-    return boardData;
+    return web3.eth.abi.decodeParameters(tileABI, encodedData.trim())[0];
 }
 function clearScreen() {
     // execSync("clear", { stdio: 'inherit' });
