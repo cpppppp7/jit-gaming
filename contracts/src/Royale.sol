@@ -36,6 +36,13 @@ contract Royale {
     // value: player's actual wallet address
     mapping(address => address) public walletOwner;
 
+    // Quick lookup for player's used burnable wallets
+    // this is just for dealing with some case that the indexing service failed to process event,
+    // so we can manually check the players scores
+    // key: player's actual wallet address
+    // value: array of player's burnable wallet addresses
+    mapping(address => address[]) public ownedWallets;
+
     // Quick lookup for player position in a room
     // key: first 64 bit for room id, next 8 bit for player id
     // value: player position tile number
@@ -142,10 +149,15 @@ contract Royale {
 
     function registerWalletOwner(address ownerAddress) public {
         walletOwner[msg.sender] = ownerAddress;
+        ownedWallets[ownerAddress].push(msg.sender);
     }
 
     function getWalletOwner(address wallet) public view returns (address) {
         return walletOwner[wallet];
+    }
+
+    function getOwnedWallets(address ownerAddress) public view returns (address[] memory) {
+        return ownedWallets[ownerAddress];
     }
 
     function resetRoom(uint64 roomId) public {
