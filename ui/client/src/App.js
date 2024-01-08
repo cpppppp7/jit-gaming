@@ -556,7 +556,7 @@ function App() {
           { isLoading && <LoadingScreen/> }
           <ToastContainer/>
           <DeathModal show={ isCharacterDead } onRejoin={ handleRejoin }/>
-          <Map mapData={ gameStatus.mapData }/>
+          <Map mapData={ gameStatus.mapData } playerIdInRoom={ gameStatus.playerIdInRoom }/>
           <div className="control-panel">
             <button onClick={ () => move('up') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'W' }</button>
