@@ -259,6 +259,11 @@ contract Royale {
         return rooms[roomId - 1].board;
     }
 
+    function getBoardByRoom(uint64 roomId) public view returns (uint8[TILE_COUNT] memory) {
+        require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
+        return rooms[roomId - 1].board;
+    }
+
     function getMyPosition() public view returns (uint8) {
         uint64 roomId = playerRoomId[msg.sender];
         if (roomId == 0) {
