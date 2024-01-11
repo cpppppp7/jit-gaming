@@ -89,13 +89,44 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getBoard",
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "roomId",
+        "type": "uint64"
+      }
+    ],
+    "name": "getBoardByRoom",
     "outputs": [
       {
         "internalType": "uint8[100]",
         "name": "",
         "type": "uint8[100]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getGameStatus",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "score",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8[100]",
+            "name": "board",
+            "type": "uint8[100]"
+          }
+        ],
+        "internalType": "struct Royale.GameStatus",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -390,25 +421,6 @@
     "name": "resetRoom",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "rooms",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "playerCount",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

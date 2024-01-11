@@ -11,10 +11,10 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Environment variables for RPC URL and Contract Address
 const rpcUrls = [
-  'https://betanet-rpc1.artela.network',
-  'https://betanet-rpc2.artela.network'
+  'https://betanet-inner2.artela.network',
+  'https://betanet-inner3.artela.network'
 ]
-const contractAddr = '0xA8DF3c46212BDfA525a91F3c2FDb3C199281a60e';
+const contractAddr = '0x0F1d2b8be0F539E89300920C90e0C4b92f295C0E';
 
 function DeathModal({ show, onRejoin }) {
   if (!show) return null;
@@ -30,10 +30,15 @@ function DeathModal({ show, onRejoin }) {
 }
 
 function App() {
-  // Load balancing between the nodes, randomly choose one
-  const rpcUrl = rpcUrls[Math.floor(Math.random() * rpcUrls.length)];
-  const web3 = new Web3(rpcUrl);
-  const contract = new web3.eth.Contract(royaleAbi, contractAddr);
+  const createConnByRoomId = (roomId) => {
+    const rpcUrl = !roomId || roomId <= 0
+      // if not joined any room, we return a random one
+      ? rpcUrls[Math.floor(Math.random() * 10) % rpcUrls.length]
+      : rpcUrls[roomId % rpcUrls.length];
+
+    console.log(`Room id is ${ roomId }, using rpc url ${ rpcUrl }`);
+    return new Web3(rpcUrl);
+  }
 
   // Create an empty map for initial state
   const createEmptyMap = () => Array.from({ length: 10 }, () => Array(10).fill(0));
@@ -82,7 +87,7 @@ function App() {
     }
   });
 
-  const getPlayerNumberFromAddress = async (burnableWalletAddress) => {
+  const getPlayerNumberFromAddress = async (contract, burnableWalletAddress) => {
     console.log("Getting player number from address:", burnableWalletAddress);
     const playerRoomId = await contract.methods.getPlayerNumberInRoom(burnableWalletAddress).call();
     console.log("Player number:", playerRoomId)
@@ -90,25 +95,13 @@ function App() {
   };
 
   // Fetch board data from the blockchain
-  const fetchBoardData = async (burnableWalletAddress) => {
+  const fetchGameStatus = async (contract, burnableWalletAddress) => {
     try {
-      const boardData = await contract.methods.getBoard().call({ from: burnableWalletAddress });
-      return boardData.map((value) => parseInt(value, 10));
+      return await contract.methods.getGameStatus().call({ from: burnableWalletAddress });
     } catch (error) {
       console.error('Error fetching board data:', error);
       toast.error('Failed to load game board');
-      return createEmptyArray();
-    }
-  };
-
-  const loadUserScore = async (burnableWalletAddress) => {
-    try {
-      const score = await contract.methods.getScore(burnableWalletAddress).call();
-      return parseInt(score, 10);
-    } catch (error) {
-      console.error('Error fetching user score:', error);
-      toast.error('Failed to fetch your score');
-      return 0;
+      return { board: createEmptyArray(), score: 0 }
     }
   };
 
@@ -147,6 +140,9 @@ function App() {
       return;
     }
 
+    const web3 = createConnByRoomId(roomId);
+    const contract = new web3.eth.Contract(royaleAbi, contractAddr);
+
     // send move tx with burnable wallet
     setMoving(true);
     try {
@@ -175,7 +171,7 @@ function App() {
   }, [ gameStatus, burnableWallet ]);
 
   // Get player's joined room number
-  const loadJoinedRoom = async (burnableWalletAddress) => {
+  const loadJoinedRoom = async (contract, burnableWalletAddress) => {
     const joinedRoom = await contract.methods.getJoinedRoom().call({
       from: burnableWalletAddress
     });
@@ -276,12 +272,16 @@ function App() {
     };
   }, [ resetGame ]); // Include any dependencies your effect relies on. If "currentAccount" is used inside the effect, it should be listed here.
 
-  const prepare = useCallback(async (roomId, playerIdInRoom, burnableWalletAddress) => {
+  const prepare = useCallback(async (contract, roomId, playerIdInRoom, burnableWalletAddress) => {
     const refresh = async () => {
       console.log('Updating game status...');
 
       // update the board data
-      const boardData = await fetchBoardData(burnableWalletAddress);
+      const gameStatus = await fetchGameStatus(contract, burnableWalletAddress);
+      const score = !gameStatus ? 0 : parseInt(gameStatus.score, 10);
+      const boardData = !gameStatus ? createEmptyArray()
+        : gameStatus.board.map((value) => parseInt(value, 10));
+
       const isEmptyBoard = boardData.every((value) => value === 0);
 
       if (isEmptyBoard) {
@@ -292,7 +292,6 @@ function App() {
         setIsCharacterDead(true);
       } else {
         // update the user score
-        let score = await loadUserScore(burnableWalletAddress);
         const gameStatus = {
           mapData: convertTo2DArray(boardData, 10),
           score,
@@ -315,7 +314,7 @@ function App() {
   }, []);
 
 
-  const deposit = useCallback(async () => {
+  const deposit = useCallback(async (web3) => {
     if (!sendTransactionAsync) {
       throw new Error('Transaction not initialized');
     }
@@ -365,13 +364,15 @@ function App() {
       return;
     }
 
+    let web3 = createConnByRoomId(joinedRoom);
+
     console.log("Checking game account balance...");
     let gameAccountBalance = parseInt(await web3.eth.getBalance(burnableWalletAddress), 10);
     if (gameAccountBalance < 10000000000000n) {
       console.log("Insufficient balance, initializing transaction...");
       // Transaction logic to deposit funds into game account
       try {
-        await deposit();
+        await deposit(web3);
         setIsLoading(true);
       } catch (e) {
         console.error("Deposit failed:", e);
@@ -382,6 +383,7 @@ function App() {
     }
 
     const gasPrice = await web3.eth.getGasPrice();
+    let contract = new web3.eth.Contract(royaleAbi, contractAddr);
 
     console.log("Checking wallet owner...");
     const walletOwner = await contract.methods.getWalletOwner(burnableWalletAddress).call();
@@ -413,9 +415,9 @@ function App() {
     // if player already in a room, retrieve the room info directly
     if (joinedRoom) {
       console.log("Player already in a room, loading game data...");
-      const playerIdInRoom = await getPlayerNumberFromAddress(burnableWalletAddress);
+      const playerIdInRoom = await getPlayerNumberFromAddress(contract, burnableWalletAddress);
       console.log("Player id in room:", playerIdInRoom);
-      await prepare(joinedRoom, playerIdInRoom, burnableWalletAddress);
+      await prepare(contract, joinedRoom, playerIdInRoom, burnableWalletAddress);
 
       // disable loading
       setIsLoading(false);
@@ -447,7 +449,7 @@ function App() {
     }
 
     // load the joined room number
-    joinedRoom = await loadJoinedRoom(burnableWalletAddress);
+    joinedRoom = await loadJoinedRoom(contract, burnableWalletAddress);
     console.log("Joined room:", joinedRoom);
 
     if (!joinedRoom) {
@@ -457,12 +459,16 @@ function App() {
       return;
     }
 
+    // reset web3 and contract to the correct rpc url
+    web3 = createConnByRoomId(joinedRoom);
+    contract = new web3.eth.Contract(royaleAbi, contractAddr);
+
     // load player id in the current room
-    const playerIdInRoom = await getPlayerNumberFromAddress(burnableWalletAddress);
+    const playerIdInRoom = await getPlayerNumberFromAddress(contract, burnableWalletAddress);
     console.log("Player id in room:", playerIdInRoom);
 
     // prepare the game data
-    await prepare(joinedRoom, playerIdInRoom, burnableWalletAddress);
+    await prepare(contract, joinedRoom, playerIdInRoom, burnableWalletAddress);
 
     // disable loading
     setIsLoading(false);
@@ -472,6 +478,8 @@ function App() {
   const joinGame = useCallback(async () => {
     // clear the state so make sure the hooks are properly triggered
     await resetGame();
+
+    const web3 = createConnByRoomId(0);
 
     // show loading screen
     setIsLoading(true);
@@ -519,7 +527,9 @@ function App() {
         return;
       }
       console.log('Burnable wallet changed, rejoining room...');
-      const joinedRoom = await loadJoinedRoom(burnableWallet.address);
+      const web3 = createConnByRoomId(0);
+      const contract = new web3.eth.Contract(royaleAbi, contractAddr);
+      const joinedRoom = await loadJoinedRoom(contract, burnableWallet.address);
       await loadGame(address, burnableWallet.address, burnableWallet.key, joinedRoom);
     }
 

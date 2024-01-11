@@ -21,11 +21,19 @@ contract Royale {
     }
 
     struct Room {
-        uint8 playerCount;
         address[PLAYER_COUNT] players;
         // The game board, each tile is represented by a uint8
         // If the uint8 is 0, the tile is empty
         // If the uint8 is non-zero, the tile is occupied by a player
+        uint8[TILE_COUNT] board;
+        uint256[PLAYER_COUNT] playerLastMoved;
+    }
+
+    struct GameStatus {
+        // The player's score
+        uint256 score;
+
+        // The game board, each tile is represented by a uint8
         uint8[TILE_COUNT] board;
     }
 
@@ -58,10 +66,10 @@ contract Royale {
     // value: room id
     mapping(address => uint64) public playerRoomId;
 
-    // Quick lookup for the players in a room
+    // Room info
     // key: room id
-    // value: array of player addresses
-    Room[MAX_ROOM_NUMBER] public rooms;
+    // value: room info
+    Room[MAX_ROOM_NUMBER] private rooms;
 
     // Quick lookup for the player's address in a room
     // key: [64 Bit Room ID][8 Bit Player RoomId][24 Bit Empty]
@@ -88,43 +96,72 @@ contract Royale {
         require(playerRoomId[msg.sender] == 0, "already joined another room");
 
         // copy the storage to stack
-        uint64 availableRoom = _getAvailableRoom();
-        require(availableRoom > 0, "all rooms are full");
+        (uint64 availableRoom, uint8 slot) = _getAvailableRoomAndSlot();
+        require(availableRoom > 0 && slot > 0, "all rooms are full");
 
         // join the available room
-        _join(availableRoom);
+        _join(availableRoom, slot);
     }
 
 
-    function _getAvailableRoom() private view returns (uint64) {
-        uint64 availableRoom;
+    function _getAvailableRoomAndSlot() private view returns (uint64, uint8) {
         for (uint64 i = 0; i < MAX_ROOM_NUMBER; ++i) {
             // find a room with empty slot
-            if (rooms[i].playerCount < PLAYER_COUNT) {
-                availableRoom = i + 1;
-                break;
+            Room storage room = rooms[i];
+            for (uint8 j = 0; j < PLAYER_COUNT; ++j) {
+                // find a room with empty slot or with stale player
+                if (room.players[j] == address(0) || _isStale(room.playerLastMoved[j])) {
+                    return (i + 1, j + 1);
+                }
             }
         }
-        return availableRoom;
+        return (0, 0);
     }
 
-    function _join(uint64 roomId) private {
+    function _isStale(uint256 lastMovedTime) private view returns (bool) {
+        return (lastMovedTime + 15 minutes) < block.timestamp;
+    }
+
+    function _join(uint64 roomId, uint8 slot) private {
         // find an empty slot in the room
         Room storage room = rooms[roomId - 1];
         address[PLAYER_COUNT] memory playersInRoom = room.players;
         uint8 playerIdInRoom = 0;
 
-        require(room.playerCount < PLAYER_COUNT, "room is full");
-
-        // find an empty slot in the room
-        for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
-            if (playersInRoom[i] == address(0)) {
-                room.players[i] = msg.sender;
-                playerIdInRoom = i + 1;
-                ++room.playerCount;
-                break;
+        if (slot > 0) {
+            // slot specified, check if the slot is empty
+            require(slot <= PLAYER_COUNT, "invalid slot");
+            address slotOccupant = playersInRoom[slot - 1];
+            if (slotOccupant == address(0)) {
+                room.players[slot - 1] = msg.sender;
+                playerIdInRoom = slot;
+            } else if (_isStale(room.playerLastMoved[slot - 1])) {
+                // for the stale player, remove it first from the room
+                _removePlayerFromRoom(room, roomId, slot);
+                room.players[slot - 1] = msg.sender;
+                playerIdInRoom = slot;
+            } else {
+                revert("slot is occupied");
+            }
+        } else {
+            // slot not specified, find an empty slot in the room
+            for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
+                if (playersInRoom[i] == address(0)) {
+                    room.players[i] = msg.sender;
+                    playerIdInRoom = i + 1;
+                    break;
+                } else if (_isStale(room.playerLastMoved[i])) {
+                    // if the player hasn't moved for 1 minute, remove the player from the room
+                    _removePlayerFromRoom(room, roomId, i + 1);
+                    room.players[i] = msg.sender;
+                    playerIdInRoom = i + 1;
+                    break;
+                }
             }
         }
+
+        // still cannot find a slot for the player
+        require(playerIdInRoom > 0, "room is full");
 
         // join the room
         playerRoomId[msg.sender] = roomId;
@@ -165,28 +202,22 @@ contract Royale {
         require(msg.sender == owner, "not owner");
         require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
         Room storage room = rooms[roomId - 1];
-        if (room.playerCount == 0) {
-            return;
-        }
         for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
             address player = room.players[i];
             if (player != address(0)) {
-                uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, i + 1);
-                delete playerPositions[playerRoomIdIndexKey];
-                delete playerRoomIdReverseIndex[playerRoomIdIndexKey];
-                delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, player)];
-                delete playerRoomId[player];
+                _removePlayerFromRoom(room, roomId, i + 1);
             }
         }
         delete room.players;
         delete room.board;
-        room.playerCount = 0;
+        delete room.playerLastMoved;
     }
 
     function _move(uint64 roomId, uint8 playerIdInRoom, Dir dir) private {
         uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, playerIdInRoom);
         uint8 currentPosition = playerPositions[playerRoomIdIndexKey];
         Room storage room = rooms[roomId - 1];
+        room.playerLastMoved[playerIdInRoom - 1] = block.timestamp;
         uint8[TILE_COUNT] storage board = room.board;
         if (currentPosition == 0) {
             // Assign a random position if the player doesn't exist on the board
@@ -210,14 +241,7 @@ contract Royale {
             uint8 tileOccupant = board[newPosition - 1];
             if (tileOccupant != 0) {
                 // remove the previous occupant out of the board and room
-                uint128 tileOccupantRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, tileOccupant);
-                delete playerPositions[tileOccupantRoomIdIndexKey];
-                delete room.players[tileOccupant - 1];
-                --room.playerCount;
-                address tileOccupantAddress = playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
-                delete playerRoomIdReverseIndex[tileOccupantRoomIdIndexKey];
-                delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, tileOccupantAddress)];
-                delete playerRoomId[tileOccupantAddress];
+                _removePlayerFromRoom(room, roomId, tileOccupant);
 
                 // update the killer's score and emit event
                 emit Scored(walletOwner[msg.sender], ++scores[msg.sender]);
@@ -230,6 +254,19 @@ contract Royale {
         }
     }
 
+    function _removePlayerFromRoom(Room storage room, uint64 roomId, uint8 playerIdInRoom) private {
+        uint128 playerRoomIdIndexKey = buildPlayerRoomIdIndex(roomId, playerIdInRoom);
+        uint8 playerPosition = playerPositions[playerRoomIdIndexKey];
+        delete playerPositions[playerRoomIdIndexKey];
+        delete room.players[playerIdInRoom - 1];
+        delete room.board[playerPosition - 1];
+        delete room.playerLastMoved[playerIdInRoom - 1];
+        address playerAddress = playerRoomIdReverseIndex[playerRoomIdIndexKey];
+        delete playerRoomIdReverseIndex[playerRoomIdIndexKey];
+        delete playerRoomIdIndex[buildPlayerAddressIndex(roomId, playerAddress)];
+        delete playerRoomId[playerAddress];
+    }
+
     function move(uint64 roomId, Dir dir) public {
         require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
 
@@ -238,7 +275,7 @@ contract Royale {
         if (joinedRoom == 0) {
             // join the given room if not joined
             // note this might fail if the room is full
-            _join(roomId);
+            _join(roomId, 0);
         } else {
             // move the player
             uint8 playerIdInRoom = playerRoomIdIndex[buildPlayerAddressIndex(roomId, msg.sender)];
@@ -250,13 +287,13 @@ contract Royale {
         return playerRoomId[msg.sender];
     }
 
-    function getBoard() public view returns (uint8[TILE_COUNT] memory) {
+    function getGameStatus() public view returns (GameStatus memory) {
         uint64 roomId = playerRoomId[msg.sender];
         if (roomId == 0) {
             uint8[TILE_COUNT] memory board;
-            return board;
+            return GameStatus(scores[msg.sender], board);
         }
-        return rooms[roomId - 1].board;
+        return GameStatus(scores[msg.sender], rooms[roomId - 1].board);
     }
 
     function getBoardByRoom(uint64 roomId) public view returns (uint8[TILE_COUNT] memory) {

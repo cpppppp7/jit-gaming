@@ -2,7 +2,7 @@ const Web3 = require('@artela/web3');
 const fs = require("fs");
 const rpcUrls = JSON.parse(fs.readFileSync('./project.config.json').toString()).nodes; // Replace with your RPC URL
 const royaleAbi = JSON.parse(fs.readFileSync('./contracts/build/contract/Royale.abi').toString());
-const contractAddr = '0x11fC90e9635ca31D616153c777b395Fcd8e770cC';
+const contractAddr = '0x0F1d2b8be0F539E89300920C90e0C4b92f295C0E';
 const vaultKey = fs.readFileSync("privateKey.txt", 'utf-8').trim();
 
 // Simulate a player's behavior in the game
@@ -85,14 +85,13 @@ async function moveRandomly(contract, playerIndex, playerAccount, roomId) {
   });
 
   // Check if the player was killed by fetching the board data
-  const boardData = await contract.methods.getBoard().call({ from: playerAccount.address });
-  return boardData.every(value => value === 0);
+  const gameStatus = await contract.methods.getGameStatus().call({ from: playerAccount.address });
+  return gameStatus.board.every(value => value === 0);
 }
 
 // Fetch board data and player score
 async function fetchBoardAndScore(contract, playerAccount) {
-  const boardData = await contract.methods.getBoard().call({ from: playerAccount.address });
-  const score = await contract.methods.getScore(playerAccount.address).call();
+  await contract.methods.getGameStatus().call({ from: playerAccount.address });
   // console.log(`Room ID: ${ roomId }, Board Data: ${ boardData }, Score: ${ score }`);
 }
 
@@ -112,7 +111,7 @@ async function main() {
     const receipt = await web3.eth.sendTransaction({
       from: vaultAccount.address,
       to: newAccount.address,
-      value: web3.utils.toWei("0.01", "ether"),
+      value: web3.utils.toWei("0.1", "ether"),
       gas: 21000,
       gasPrice
     });

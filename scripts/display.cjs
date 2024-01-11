@@ -87,7 +87,7 @@ const args = process.argv.slice(2);
 if (args.length > 0) {
     const roomId = args[0];
     const rpcUrl = rpcUrls[roomId % rpcUrls.length];
-    setInterval(() => updateBoard(roomId, rpcUrl), 200);
+    setInterval(() => updateBoard(roomId, rpcUrl), 2000);
 } else {
     console.log('Please provide a room ID as a command line argument.');
     process.exit(1);

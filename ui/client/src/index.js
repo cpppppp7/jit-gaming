@@ -26,8 +26,18 @@ const artela = {
     symbol: 'ART',
   },
   rpcUrls: {
-    public: { http: ['https://betanet-rpc1.artela.network/'] },
-    default: { http: ['https://betanet-rpc1.artela.network/'] },
+    public: {
+      http: [
+        'https://betanet-inner2.artela.network',
+        'https://betanet-inner3.artela.network'
+      ]
+    },
+    default: {
+      http: [
+        'https://betanet-inner2.artela.network',
+        'https://betanet-inner3.artela.network'
+      ]
+    },
   },
   blockExplorers: {
     default: { name: 'SnowTrace', url: 'https://betanet-scan.artela.network/' },
@@ -37,7 +47,7 @@ const artela = {
 };
 
 const { chains, publicClient } = configureChains(
-  [artela],
+  [ artela ],
   [
     alchemyProvider({ apiKey: "b4dmYzJ5ztY18ziStcClJ_jRjEdieQqo" }),
     publicProvider()
@@ -58,12 +68,10 @@ const wagmiConfig = createConfig({
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-
-
   <React.StrictMode>
-    <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider modalSize="compact" locale="en-US" chains={chains}>
-        <App />
+    <WagmiConfig config={ wagmiConfig }>
+      <RainbowKitProvider modalSize="compact" locale="en-US" chains={ chains }>
+        <App/>
       </RainbowKitProvider>
     </WagmiConfig>
   </React.StrictMode>
