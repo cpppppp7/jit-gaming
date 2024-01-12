@@ -29,13 +29,15 @@ const artela = {
     public: {
       http: [
         'https://betanet-inner2.artela.network',
-        'https://betanet-inner3.artela.network'
+        'https://betanet-inner3.artela.network',
+        'https://betanet-inner4.artela.network'
       ]
     },
     default: {
       http: [
         'https://betanet-inner2.artela.network',
-        'https://betanet-inner3.artela.network'
+        'https://betanet-inner3.artela.network',
+        'https://betanet-inner4.artela.network'
       ]
     },
   },

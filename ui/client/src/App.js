@@ -12,9 +12,10 @@ import 'react-toastify/dist/ReactToastify.css';
 // Environment variables for RPC URL and Contract Address
 const rpcUrls = [
   'https://betanet-inner2.artela.network',
-  'https://betanet-inner3.artela.network'
+  'https://betanet-inner3.artela.network',
+  'https://betanet-inner4.artela.network'
 ]
-const contractAddr = '0x0F1d2b8be0F539E89300920C90e0C4b92f295C0E';
+const contractAddr = '0x76a33214F8d4cd83Ac40A16aC40E12298B4A4941';
 
 function DeathModal({ show, onRejoin }) {
   if (!show) return null;

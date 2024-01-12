@@ -2,7 +2,7 @@ const Web3 = require('@artela/web3');
 const fs = require("fs");
 const rpcUrls = JSON.parse(fs.readFileSync('./project.config.json').toString()).nodes; // Replace with your RPC URL
 const royaleAbi = JSON.parse(fs.readFileSync('./contracts/build/contract/Royale.abi').toString());
-const contractAddr = '0x0F1d2b8be0F539E89300920C90e0C4b92f295C0E';
+const contractAddr = '0x76a33214F8d4cd83Ac40A16aC40E12298B4A4941';
 const vaultKey = fs.readFileSync("privateKey.txt", 'utf-8').trim();
 
 // Simulate a player's behavior in the game
@@ -111,7 +111,7 @@ async function main() {
     const receipt = await web3.eth.sendTransaction({
       from: vaultAccount.address,
       to: newAccount.address,
-      value: web3.utils.toWei("0.1", "ether"),
+      value: web3.utils.toWei("0.01", "ether"),
       gas: 21000,
       gasPrice
     });
