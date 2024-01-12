@@ -2,13 +2,16 @@ const Web3 = require('@artela/web3');
 const fs = require("fs");
 const rpcUrls = JSON.parse(fs.readFileSync('./project.config.json').toString()).nodes; // Replace with your RPC URL
 const royaleAbi = JSON.parse(fs.readFileSync('./contracts/build/contract/Royale.abi').toString());
-const contractAddr = '0x76a33214F8d4cd83Ac40A16aC40E12298B4A4941';
+const contractAddr = '0xCeb30f2CCB9803603F50c22d7Ecab8709BDE8051';
 const vaultKey = fs.readFileSync("privateKey.txt", 'utf-8').trim();
 
 // Simulate a player's behavior in the game
 async function simulatePlayer(playerIndex, playerKey, stopSignal) {
-  const web3 = new Web3(rpcUrls[playerIndex % rpcUrls.length]);
+  const rpcUrl = rpcUrls[playerIndex % rpcUrls.length];
+  const web3 = new Web3(rpcUrl);
   const contract = new web3.eth.Contract(royaleAbi, contractAddr);
+
+  console.log(`[Player ${ playerIndex }]: Starting simulation with rpcUrl ${ rpcUrl }`);
 
   const playerAccount = web3.eth.accounts.privateKeyToAccount(playerKey);
   web3.eth.accounts.wallet.add(playerAccount);

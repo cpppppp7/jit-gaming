@@ -15,7 +15,7 @@ const rpcUrls = [
   'https://betanet-inner3.artela.network',
   'https://betanet-inner4.artela.network'
 ]
-const contractAddr = '0x76a33214F8d4cd83Ac40A16aC40E12298B4A4941';
+const contractAddr = '0xCeb30f2CCB9803603F50c22d7Ecab8709BDE8051';
 
 function DeathModal({ show, onRejoin }) {
   if (!show) return null;
