@@ -84,8 +84,17 @@ contract Royale {
     // owner of the contract
     address private owner;
 
+    // max room enabled
+    uint64 public maxRoomEnabled = 10;
+
     constructor() {
         owner = msg.sender;
+    }
+
+    function setMaxRoomEnabled(uint64 _maxRoomEnabled) public {
+        require(msg.sender == owner, "not owner");
+        require(_maxRoomEnabled <= MAX_ROOM_NUMBER, "exceed max room number");
+        maxRoomEnabled = _maxRoomEnabled;
     }
 
     function isOwner(address user) external view returns (bool result) {
@@ -108,7 +117,7 @@ contract Royale {
         for (uint64 i = 0; i < MAX_ROOM_NUMBER; ++i) {
             // find a room with empty slot
             Room storage room = rooms[i];
-            for (uint8 j = 0; j < PLAYER_COUNT; ++j) {
+            for (uint8 j = 0; j < maxRoomEnabled; ++j) {
                 // find a room with empty slot or with stale player
                 if (room.players[j] == address(0) || _isStale(room.playerLastMoved[j])) {
                     return (i + 1, j + 1);
@@ -197,10 +206,27 @@ contract Royale {
         return ownedWallets[ownerAddress];
     }
 
-    function resetRoom(uint64 roomId) public {
+    function getAllRooms() public view returns (Room[MAX_ROOM_NUMBER] memory) {
+        return rooms;
+    }
+
+    function resetAllRooms() public {
         // just in case if there is some bug we cannot fix, or all rooms are occupied by zombies
         require(msg.sender == owner, "not owner");
+        for (uint64 i = 0; i < MAX_ROOM_NUMBER; ++i) {
+            _resetRoom(i + 1);
+        }
+    }
+
+    function resetRoom(uint64 roomId) public {
+        // just in case if there is some bug we cannot fix, or a single room are occupied by zombies
+        require(msg.sender == owner, "not owner");
         require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
+
+        _resetRoom(roomId);
+    }
+
+    function _resetRoom(uint64 roomId) private {
         Room storage room = rooms[roomId - 1];
         for (uint8 i = 0; i < PLAYER_COUNT; ++i) {
             address player = room.players[i];
@@ -268,7 +294,7 @@ contract Royale {
     }
 
     function move(uint64 roomId, Dir dir) public {
-        require(roomId <= MAX_ROOM_NUMBER && roomId > 0, "invalid room id");
+        require(roomId <= maxRoomEnabled && roomId > 0, "invalid room id");
 
         uint64 joinedRoom = playerRoomId[msg.sender];
         require(joinedRoom == 0 || roomId == joinedRoom, "already joined another room");

@@ -89,6 +89,36 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAllRooms",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address[10]",
+            "name": "players",
+            "type": "address[10]"
+          },
+          {
+            "internalType": "uint8[100]",
+            "name": "board",
+            "type": "uint8[100]"
+          },
+          {
+            "internalType": "uint256[10]",
+            "name": "playerLastMoved",
+            "type": "uint256[10]"
+          }
+        ],
+        "internalType": "struct Royale.Room[10]",
+        "name": "",
+        "type": "tuple[10]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint64",
@@ -280,6 +310,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "maxRoomEnabled",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint64",
@@ -411,6 +454,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "resetAllRooms",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint64",
@@ -440,6 +490,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "_maxRoomEnabled",
+        "type": "uint64"
+      }
+    ],
+    "name": "setMaxRoomEnabled",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
