@@ -69,6 +69,7 @@ function App() {
 
   const currentWalletAddress = useRef('');
   const lastReportErrorTime = useRef(0);
+  const lastJoinGameTime = useRef(0);
 
   const { config, error, } = usePrepareSendTransaction({
     to: burnableWallet.address.trim(),
@@ -84,7 +85,7 @@ function App() {
     async onDisconnect() {
       toast.info('Wallet disconnected, game quit');
       setBurnableWallet(defaultBurnableWallet());
-      await resetGame();
+      resetGame();
     }
   });
 
@@ -180,7 +181,7 @@ function App() {
   };
 
   // Clear all states
-  const resetGame = useCallback(async () => {
+  const resetGame = useCallback(() => {
     console.log('Clearing states...');
     clearInterval(refreshIntervalId);
     setRefreshIntervalId(0);
@@ -257,7 +258,7 @@ function App() {
         toast.info('Wallet account changed, please rejoin the game');
         currentWalletAddress.current = accounts[0];
         setBurnableWallet(defaultBurnableWallet());
-        await resetGame();
+        resetGame();
       }
     };
 
@@ -289,7 +290,7 @@ function App() {
         console.log('Empty board, player has been removed from the room');
         // empty board means this player has been removed from the room
         // we need to reset the status
-        await resetGame();
+        resetGame();
         setIsCharacterDead(true);
       } else {
         // update the user score
@@ -477,8 +478,15 @@ function App() {
 
   // Check and handle game account logic
   const joinGame = useCallback(async () => {
+    if (lastJoinGameTime.current > 0 && (Date.now() - lastJoinGameTime.current) < 10000) {
+      toast.error('Join game too frequently, please try again later');
+      return;
+    }
+
+    lastJoinGameTime.current = Date.now();
+
     // clear the state so make sure the hooks are properly triggered
-    await resetGame();
+    resetGame();
 
     const web3 = createConnByRoomId(0);
 
@@ -498,6 +506,16 @@ function App() {
 
     // update burnable wallet address
     let sKeyAccount = web3.eth.accounts.privateKeyToAccount(sKeyPrivKey);
+
+    // check if there is any available room
+    const contract = new web3.eth.Contract(royaleAbi, contractAddr);
+    let { roomId, slot } = await contract.methods.getAvailableRoomAndSlot().call();
+    if (!parseInt(roomId, 10) || !parseInt(slot, 10)) {
+      console.error('No available room');
+      toast.error('Game\'s too hot, all rooms are full, please try again later');
+      setIsLoading(false);
+      return;
+    }
 
     setBurnableWallet({
       key: sKeyPrivKey,

@@ -119,6 +119,24 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAvailableRoomAndSlot",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "roomId",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint8",
+        "name": "slot",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint64",
