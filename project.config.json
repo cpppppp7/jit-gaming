@@ -1,3 +1,8 @@
 {
-  "node": "https://betanet-rpc1.artela.network"
+  "node": "https://betanet-inner2.artela.network",
+  "nodes": [
+    "https://betanet-inner2.artela.network",
+    "https://betanet-inner3.artela.network",
+    "https://betanet-inner4.artela.network"
+  ]
 }
