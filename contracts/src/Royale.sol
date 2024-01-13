@@ -112,6 +112,9 @@ contract Royale {
         _join(availableRoom, slot);
     }
 
+    function getAvailableRoomAndSlot() public view returns (uint64, uint8) {
+        return _getAvailableRoomAndSlot();
+    }
 
     function _getAvailableRoomAndSlot() private view returns (uint64, uint8) {
         for (uint64 i = 0; i < MAX_ROOM_NUMBER; ++i) {
