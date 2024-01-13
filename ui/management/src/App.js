@@ -65,8 +65,12 @@ const App = () => {
 
   const convertTo2DArray = (boardData, rowSize) => {
     const board2D = [];
-    for (let i = 0; i < boardData.length; i += rowSize) {
-      board2D.push(boardData.slice(i, i + rowSize));
+    for (let i = 0; i < rowSize; i++) {
+      const row = [];
+      for (let j = 0; j < boardData.length / rowSize; j++) {
+        row.push(boardData[j * rowSize + i]);
+      }
+      board2D.push(row);
     }
     return board2D;
   };
