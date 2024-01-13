@@ -2,7 +2,7 @@ const Web3 = require('@artela/web3');
 const fs = require("fs");
 const rpcUrls = JSON.parse(fs.readFileSync('./project.config.json').toString()).nodes; // Replace with your RPC URL
 const royaleAbi = JSON.parse(fs.readFileSync('./contracts/build/contract/Royale.abi').toString());
-const contractAddr = '0xCeb30f2CCB9803603F50c22d7Ecab8709BDE8051';
+const contractAddr = '0x6559c92980E7DCa126738D47c58b41f6719799bB';
 const vaultKey = fs.readFileSync("privateKey.txt", 'utf-8').trim();
 
 // Simulate a player's behavior in the game
