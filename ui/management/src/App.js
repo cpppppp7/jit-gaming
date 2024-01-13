@@ -1,6 +1,6 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import React, { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi'
+import React, { useCallback, useEffect, useState } from 'react';
+import { useAccount, usePrepareSendTransaction, useSendTransaction } from 'wagmi'
 import Web3 from 'web3';
 import './App.css';
 
@@ -16,6 +16,17 @@ const App = () => {
   const [ rooms, setRooms ] = useState([]);
   const [ maxRoomEnabled, setMaxRoomEnabled ] = useState(0);
   const [ resetRoomNumber, setResetRoomNumber ] = useState(1);
+  const [ callData, setCallData ] = useState(null);
+  const [ isSending, setIsSending ] = useState(false);
+
+  const { config, error, } = usePrepareSendTransaction({
+    to: contractAddress,
+    data: callData,
+  });
+
+  const {
+    sendTransaction
+  } = useSendTransaction(config);
 
   useEffect(() => {
     let interval;
@@ -59,9 +70,10 @@ const App = () => {
       });
   };
 
-  const resetRoom = async () => {
-    await contract.methods.resetRoom(resetRoomNumber).send({ from: account });
-  };
+  const resetRoom = useCallback(async (resetRoomNumber) => {
+    setIsSending(true);
+    setCallData(contract.methods.resetRoom(resetRoomNumber).encodeABI());
+  }, []);
 
   const convertTo2DArray = (boardData, rowSize) => {
     const board2D = [];
@@ -74,14 +86,28 @@ const App = () => {
     }
     return board2D;
   };
-  const resetAllRooms = async () => {
-    await contract.methods.resetAllRooms().send({ from: account });
-  };
+  const resetAllRooms = useCallback(async () => {
+    setIsSending(true);
+    setCallData(contract.methods.resetAllRooms().encodeABI());
+  }, []);
 
-  const setMaxRoomEnabledAction = async (value) => {
-    await contract.methods.setMaxRoomEnabled(value).send({ from: account });
-    setMaxRoomEnabled(value);
-  };
+  const setMaxRoomEnabledAction = useCallback(async (maxRoomEnabled) => {
+    setIsSending(true);
+    setCallData(contract.methods.setMaxRoomEnabled(maxRoomEnabled).encodeABI());
+  }, []);
+
+  useEffect(() => {
+    if (!sendTransaction) {
+      return;
+    }
+
+    async function send() {
+      await sendTransaction();
+      setIsSending(false);
+    }
+
+    send();
+  }, [ sendTransaction ]);
 
   const renderBoard = (board) => {
     return (
@@ -136,8 +162,8 @@ const App = () => {
                 value={ resetRoomNumber }
                 onChange={ (e) => setResetRoomNumber(e.target.value) }
               />
-              <button onClick={ resetRoom } className="button" disabled={ !isOwner }>Reset Room</button>
-              <button onClick={ resetAllRooms } className="button" disabled={ !isOwner }>Reset All Rooms</button>
+              <button onClick={ () => resetRoom(resetRoomNumber) } className="button" disabled={ !isOwner || isSending }>Reset Room</button>
+              <button onClick={ resetAllRooms } className="button" disabled={ !isOwner || isSending }>Reset All Rooms</button>
             </div>
             <div className="container">
               <label htmlFor="resetRoomNumber" className="label">Max Number of Room: </label>
@@ -148,7 +174,7 @@ const App = () => {
                 onChange={ (e) => setMaxRoomEnabled(e.target.value) }
               />
               <button onClick={ () => setMaxRoomEnabledAction(maxRoomEnabled) } className="button"
-                      disabled={ !isOwner }>Set Max Room Enabled
+                      disabled={ !isOwner || isSending }>Set Max Room Enabled
               </button>
             </div>
           </div>
