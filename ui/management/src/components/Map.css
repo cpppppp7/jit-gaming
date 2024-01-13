@@ -1,0 +1,178 @@
+.map {
+  display: grid;
+  grid-template-columns: repeat(10, 50px); /* 10列，每列宽度固定为50px */
+  grid-template-rows: repeat(10, 50px);    /* 10行，每行高度固定为50px */
+  grid-gap: 1px;  /* 间隙设置为5px */
+  /* width: 510px;
+  height: 510px; */
+  margin: auto;   /* 居中显示 */
+}
+
+.cell {
+  width: 50px;
+  height: 50px;
+  border: 1px solid #ddd; /* 添加边框以区分单元格 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background-image: url('land2.png');
+  background-size: cover; /* 使背景图片覆盖整个单元格 */
+  background-position: center; /* 将背景图片置于中心 */
+}
+
+@media (max-width: 768px) {
+  .map {
+    grid-template-columns: repeat(10, 10vw); /* 在小屏幕上每个单元格占屏幕宽度的 10% */
+    grid-template-rows: repeat(10, 10vw); /* 在小屏幕上每个单元格占屏幕宽度的 10% */
+  }
+  .cell {
+    height: 10vw; /* 在小屏幕上单元格的高度也相应变化 */
+    width: 10vw; /* 在小屏幕上单元格的高度也相应变化 */
+  }
+}
+
+/* .player {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-image: url('player.png');
+  background-size: cover;
+  background-position: center;
+} */
+
+.player {
+  position: relative; /* 使得可以相对定位子元素 */
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  background-image: url('player.png');
+  background-size: cover; /* 使背景图片覆盖整个单元格 */
+  background-position: center; /* 将背景图片置于中心 */
+}
+
+.current-player {
+  position: relative; /* 使得可以相对定位子元素 */
+  width: 100%;
+  height: 100%;
+  background-color: yellow;
+  background-image: url('player.png'), linear-gradient(to bottom, yellow, red);
+  background-size: cover; /* 使背景图片覆盖整个单元格 */
+  background-position: center; /* 将背景图片置于中心 */
+}
+
+.player-number {
+  position: absolute; /* 绝对定位 */
+  top: 0; /* 顶部对齐 */
+  right: 0; /* 右侧对齐 */
+  color: red; /* 文字颜色为红色 */
+  font-weight: bold; /* 字体为粗体 */
+  font-size: xx-small;
+  padding: 0px; /* 添加一些内边距 */
+}
+
+
+.player1 { background-color: red; }
+.player2 { background-color: blue; }
+.player3 { background-color: green; }
+/* 根据需要添加更多的颜色样式 */
+
+/* 在 App.css 或相应的 CSS 文件中 */
+.control-panel {
+  display: grid;
+  grid-template-rows: 1fr 1fr;  /* 三行 */
+  grid-template-columns: 1fr 1fr 1fr;  /* 三列 */
+  gap: 10px;  /* 间隙 */
+  max-width: 200px;  /* 控制面板的最大宽度 */
+  margin: 20px auto;  /* 居中并添加上下边距 */
+}
+
+.control-panel button {
+  width: 100%;
+  height: 40px;
+  padding: 10px;
+  font-size: 16px;  /* 字体大小 */
+  cursor: pointer;  /* 鼠标样式 */
+}
+
+/* 移动按钮布局 */
+.control-panel button:nth-child(1) { grid-area: 1 / 2 / 2 / 3; } /* 上 */
+.control-panel button:nth-child(2) { grid-area: 2 / 1 / 3 / 2; } /* 左 */
+.control-panel button:nth-child(3) { grid-area: 2 / 3 / 3 / 4; } /* 右 */
+.control-panel button:nth-child(4) { grid-area: 3 / 2 / 2 / 3; } /* 下 */
+
+/* 私钥输入框样式 */
+.player-sk-input {
+  margin: 10px auto;
+  width: 95%;
+}
+
+.player-sk-input input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 10px; /* 或你想要的任何圆角大小 */
+}
+
+/* 增加标签的下边距 */
+.player-sk-input label {
+  display: block;
+  margin-bottom: 20px; /* 或根据需要调整间距大小 */
+}
+
+.player-number-value {
+  color: red; /* 仅将编号文本设置为红色 */
+}
+
+.content {
+  display: inline-flex;
+  justify-content: center;
+  align-items: start;
+  padding: 16px;
+  border-radius: 10px;
+  border: 3px solid grey;
+  background-color: rgba(225,204,178, 0.652);
+}
+
+.map-container {
+  max-width: 550px; /* 假设每个单元格宽度为 50px，共 10 个单元格，加上间隙 */
+  height: auto; /* 高度自适应 */
+}
+
+.players-panel {
+  max-width: 550px;
+  width: 150px;  /* 或你希望的任何固定宽度 */
+  margin-left: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.players-panel h3 {
+  margin-bottom: 10px;
+}
+
+.players-panel ul {
+  list-style-type: none;
+  text-align: left;  /* 仅将列表项文本靠左对齐 */
+  padding: 0;
+}
+
+.players-panel li {
+  margin-bottom: 5px;
+}
+
+/* 响应式布局：在小屏幕上堆叠元素 */
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+  }
+
+  .map-container, .players-panel {
+    width: 100%;  /* 在小屏幕上占满整个容器宽度 */
+    margin-bottom: 20px; /* 添加一些间距 */
+  }
+}
