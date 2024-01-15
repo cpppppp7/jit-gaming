@@ -596,6 +596,12 @@ function App() {
             <button onClick={ () => move('down') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'S' }</button>
           </div>
+          <div className='line'>
+            <span className="player-number-value">Play fully on-chain game with on-chain NPC!</span>
+          </div>
+          <div className='line'>
+            <span className="player-number-value">Achieve 5 scores to finish Galxe task!</span>
+          </div>
           <div className="wallet-panel">
             <div className="wallet-sub-panel">
               <ConnectButton/>
