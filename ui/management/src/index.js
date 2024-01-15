@@ -28,16 +28,14 @@ const artela = {
   rpcUrls: {
     public: {
       http: [
-        'https://betanet-inner2.artela.network',
-        'https://betanet-inner3.artela.network',
-        'https://betanet-inner4.artela.network'
+        'https://betanet-rpc1.artela.network',
+        'https://betanet-rpc2.artela.network'
       ]
     },
     default: {
       http: [
-        'https://betanet-inner2.artela.network',
-        'https://betanet-inner3.artela.network',
-        'https://betanet-inner4.artela.network'
+        'https://betanet-rpc1.artela.network',
+        'https://betanet-rpc2.artela.network'
       ]
     },
   },
