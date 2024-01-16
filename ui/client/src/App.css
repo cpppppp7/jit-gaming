@@ -40,6 +40,23 @@
   margin-bottom: 20px;
 }
 
+button.arrow-key {
+  border-radius: 5px;
+  border: 1px solid grey;
+  background-color: white;
+  padding: 10px 20px;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+button.arrow-key:active {
+  background-color: lightgrey;
+  border-color: grey;
+}
+
 button.rejoin-game {
   background-color: #c91f1f; /* Button color */
   color: white;
@@ -120,4 +137,13 @@ button.rejoin-game:hover {
 .line {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+.event-banner:hover {
+  cursor: pointer;
+}
+
+.event-banner:active {
+  background-color: lightgrey;
+  border-color: grey;
 }
