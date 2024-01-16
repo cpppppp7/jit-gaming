@@ -8,6 +8,7 @@ import './App.css';
 import Map from './components/Map';
 import royaleAbi from './royale-abi.json';
 import 'react-toastify/dist/ReactToastify.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 // Environment variables for RPC URL and Contract Address
 const rpcUrls = [
@@ -29,6 +30,16 @@ function DeathModal({ show, onRejoin }) {
     </div>
   );
 }
+
+const Banner = () => {
+  return (
+    <div className="event-banner alert alert-danger alert-dismissible" role="alert"
+         onClick={ () => window.location.href = 'https://galxe.com/bitmart-exchange/campaign/GCGQ9ttwdH' }>
+      Play fully on-chain game with on-chain NPC! <br/>
+      Achieve 5 scores to win reward!
+    </div>
+  );
+};
 
 function App() {
   const createConnByRoomId = (roomId) => {
@@ -587,20 +598,17 @@ function App() {
           <DeathModal show={ isCharacterDead } onRejoin={ handleRejoin }/>
           <Map mapData={ gameStatus.mapData } playerIdInRoom={ gameStatus.playerIdInRoom }/>
           <div className="control-panel">
-            <button onClick={ () => move('up') }
+            <button className={ 'arrow-key' } onClick={ () => move('up') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'W' }</button>
-            <button onClick={ () => move('left') }
+            <button className={ 'arrow-key' } onClick={ () => move('left') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'A' }</button>
-            <button onClick={ () => move('right') }
+            <button className={ 'arrow-key' } onClick={ () => move('right') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'D' }</button>
-            <button onClick={ () => move('down') }
+            <button className={ 'arrow-key' } onClick={ () => move('down') }
                     disabled={ isMoving }>{ isMoving ? '⌛️' : 'S' }</button>
           </div>
-          <div className='line'>
-            <span className="player-number-value">Play fully on-chain game with on-chain NPC!</span>
-          </div>
-          <div className='line'>
-            <span className="player-number-value">Achieve 5 scores to finish Galxe task!</span>
+          <div className="container">
+            <Banner/>
           </div>
           <div className="wallet-panel">
             <div className="wallet-sub-panel">
